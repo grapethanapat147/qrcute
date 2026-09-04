@@ -1,1 +1,196 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+  Design tokens
+  -------------
+  โทนแบรนด์: น้ำเงินเข้ม = ความน่าเชื่อถือเรื่องการเงิน (PromptPay เป็น use case หลัก)
+  accent เขียว-teal = สถานะ "สแกนติด / สำเร็จ"
+  ค่าทั้งหมดเป็น OKLCH เพื่อให้ปรับ lightness ได้โดยไม่เพี้ยนสี
+*/
+:root {
+  --radius: 0.75rem;
+
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.18 0.01 258);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.01 258);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.01 258);
+
+  --primary: oklch(0.48 0.16 258);
+  --primary-foreground: oklch(0.99 0 0);
+
+  --secondary: oklch(0.96 0.005 258);
+  --secondary-foreground: oklch(0.26 0.02 258);
+
+  --muted: oklch(0.96 0.005 258);
+  --muted-foreground: oklch(0.52 0.015 258);
+
+  --accent: oklch(0.72 0.14 172);
+  --accent-foreground: oklch(0.18 0.03 172);
+
+  --destructive: oklch(0.58 0.22 27);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --success: oklch(0.62 0.15 155);
+  --success-foreground: oklch(0.99 0 0);
+  --warning: oklch(0.78 0.15 75);
+  --warning-foreground: oklch(0.22 0.05 75);
+
+  --border: oklch(0.91 0.005 258);
+  --input: oklch(0.91 0.005 258);
+  --ring: oklch(0.48 0.16 258);
+
+  /*
+    QR canvas — ห้าม theme
+    QR ต้อง contrast สูงสุดเสมอเพื่อให้สแกนติดทั้งบนจอและบนกระดาษ
+    ถ้าปล่อยให้ dark mode พลิกสี QR จะสแกนไม่ติดกับเครื่องอ่านบางรุ่น
+  */
+  --qr-ink: #000000;
+  --qr-paper: #ffffff;
+  /* quiet zone ขั้นต่ำตามสเปก = 4 module */
+  --qr-quiet-zone: 4;
+}
+
+.dark {
+  --background: oklch(0.16 0.012 258);
+  --foreground: oklch(0.97 0.003 258);
+
+  --card: oklch(0.21 0.015 258);
+  --card-foreground: oklch(0.97 0.003 258);
+  --popover: oklch(0.21 0.015 258);
+  --popover-foreground: oklch(0.97 0.003 258);
+
+  --primary: oklch(0.7 0.14 258);
+  --primary-foreground: oklch(0.16 0.02 258);
+
+  --secondary: oklch(0.27 0.018 258);
+  --secondary-foreground: oklch(0.97 0.003 258);
+
+  --muted: oklch(0.27 0.018 258);
+  --muted-foreground: oklch(0.68 0.015 258);
+
+  --accent: oklch(0.68 0.13 172);
+  --accent-foreground: oklch(0.16 0.03 172);
+
+  --destructive: oklch(0.65 0.2 27);
+  --destructive-foreground: oklch(0.16 0.02 27);
+
+  --success: oklch(0.68 0.14 155);
+  --success-foreground: oklch(0.16 0.03 155);
+  --warning: oklch(0.8 0.14 75);
+  --warning-foreground: oklch(0.2 0.05 75);
+
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.7 0.14 258);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-qr-ink: var(--qr-ink);
+  --color-qr-paper: var(--qr-paper);
+
+  --font-sans: var(--font-thai-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /*
+    Type scale สำหรับภาษาไทย
+    ค่า default ของ Tailwind ออกแบบมาสำหรับ Latin ที่ไม่มีสระบน/ล่าง
+    เช่น text-4xl = 36px/40px (1.11) ซึ่งทำให้ไม้โท+สระอุ ชนกันเมื่อขึ้นบรรทัดที่สอง
+    ต้องแก้ที่ scale เพราะ utility class ชนะ base layer เสมอ
+  */
+  --text-sm--line-height: 1.65;
+  --text-base--line-height: 1.7;
+  --text-lg--line-height: 1.7;
+  --text-xl--line-height: 1.55;
+  --text-2xl--line-height: 1.45;
+  --text-3xl--line-height: 1.35;
+  --text-4xl--line-height: 1.3;
+  --text-5xl--line-height: 1.25;
+  --text-6xl--line-height: 1.2;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv11";
+  }
+
+  /*
+    ภาษาไทยไม่มีช่องว่างระหว่างคำ เบราว์เซอร์จึงตัดบรรทัดกลางคำได้ถ้าไม่บังคับ
+    line-break: normal + word-break: normal ให้ engine ใช้ dictionary ของตัวเอง
+    overflow-wrap: anywhere กันไม่ให้ URL ยาว ๆ ดัน layout พัง
+  */
+  :lang(th),
+  .text-thai {
+    line-break: normal;
+    word-break: normal;
+    overflow-wrap: anywhere;
+    text-wrap: pretty;
+  }
+
+  /* line-height ของหัวข้อคุมที่ type scale ใน @theme ไม่ใช่ที่นี่ (utility ชนะ base layer) */
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply text-balance;
+  }
+}
+
+/**
+ * ต้องใช้ !important จริง ๆ ตรงนี้ เพราะต้องชนะ utility class ของ Tailwind
+ * และ inline style ที่ animation library ใส่มา — เป็น a11y requirement ไม่ใช่ความมักง่าย
+ */
+/* biome-ignore-start lint/complexity/noImportantStyles: ต้องชนะ utility/inline style เพื่อเคารพ prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+/* biome-ignore-end lint/complexity/noImportantStyles: ดูเหตุผลด้านบน */

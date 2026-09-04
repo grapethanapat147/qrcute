@@ -1,34 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# QR Code Website (ชื่อชั่วคราว: QR ไทย)
 
-## Getting Started
+เว็บสร้าง QR Code สำหรับตลาดไทย — พร้อมเพย์ถูกมาตรฐาน ฟอนต์ไทยตัดคำถูก
+ฟรีไม่หมดอายุ และอัปเกรดเป็น dynamic QR ได้
 
-First, run the development server:
+## เริ่มต้น
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+bun install
+cp .env.example .env.local
+bun run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+เปิด http://localhost:3000
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## คำสั่ง
 
-## Learn More
+| คำสั่ง | ทำอะไร |
+| --- | --- |
+| `bun run dev` | dev server |
+| `bun run check` | typecheck + lint + test — **รันก่อน commit ทุกครั้ง** |
+| `bun run test` | รัน test ครั้งเดียว |
+| `bun run test:watch` | รัน test แบบ watch |
+| `bun run lint:fix` | แก้ปัญหา lint/format อัตโนมัติ |
+| `bun run build` | production build |
 
-To learn more about Next.js, take a look at the following resources:
+## เอกสาร
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| ไฟล์ | เนื้อหา |
+| --- | --- |
+| [`CLAUDE.md`](./CLAUDE.md) | context + convention สำหรับ coding agent |
+| [`docs/strategy.md`](./docs/strategy.md) | ICP · คู่แข่ง · ราคา · ตัวชี้วัด |
+| [`docs/prd.md`](./docs/prd.md) | feature spec + acceptance criteria |
+| [`docs/seo.md`](./docs/seo.md) | keyword map · URL · schema |
+| [`docs/roadmap.md`](./docs/roadmap.md) | แผน 9 สัปดาห์ + Definition of Done |
+| [`docs/decisions/`](./docs/decisions/) | ADR |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Stack
 
-## Deploy on Vercel
+Next.js 16 (App Router) · React 19 · TypeScript strict · Tailwind CSS v4 · shadcn/ui
+Biome · Vitest · Bun · Supabase (จาก W5) · Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+เหตุผลที่เลือก stack นี้อยู่ใน [ADR 0001](./docs/decisions/0001-stack.md)
