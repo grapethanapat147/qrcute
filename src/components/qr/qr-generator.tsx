@@ -12,6 +12,7 @@ import {
   QR_USE_CASES,
   type QrMatrix,
 } from "@/lib/qr/encode";
+import { clampLogoForLevel, logoWarning } from "@/lib/qr/logo";
 import { buildPayload } from "@/lib/qr/payload";
 import { svgToDataUri } from "@/lib/qr/render-png";
 import { renderSvg } from "@/lib/qr/render-svg";
@@ -100,14 +101,23 @@ export function QrGenerator() {
   const debouncedLevel = useDebouncedValue(level);
   const debouncedStyle = useDebouncedValue(style);
 
+  // บีบขนาดโลโก้ให้เข้ากับระดับความทนทานก่อนเอาไปใช้ทุกที่
+  // เก็บค่าที่ผู้ใช้ตั้งไว้ใน state ตามเดิม ถ้าเปลี่ยนกลับไประดับที่ทนขึ้น ขนาดเดิมจะกลับมา
+  const effectiveStyle = useMemo(
+    () => clampLogoForLevel(debouncedStyle, debouncedLevel),
+    [debouncedStyle, debouncedLevel],
+  );
+
   const result = useMemo(
-    () => buildPreview(debouncedData, debouncedLevel, debouncedStyle),
-    [debouncedData, debouncedLevel, debouncedStyle],
+    () => buildPreview(debouncedData, debouncedLevel, effectiveStyle),
+    [debouncedData, debouncedLevel, effectiveStyle],
   );
 
   const styleWarning = useMemo(
-    () => validateStyle(debouncedStyle).warning,
-    [debouncedStyle],
+    () =>
+      validateStyle(effectiveStyle).warning ??
+      logoWarning(effectiveStyle.logo, debouncedLevel),
+    [effectiveStyle, debouncedLevel],
   );
 
   // เก็บสถานะไว้ใน URL เพื่อให้แชร์และบุ๊กมาร์กได้
@@ -228,7 +238,11 @@ export function QrGenerator() {
         </div>
 
         <div id="panel-design" role="tabpanel" hidden={panel !== "design"}>
-          <QrStyleControls style={style} onChange={setStyle} />
+          <QrStyleControls
+            style={clampLogoForLevel(style, level)}
+            level={level}
+            onChange={setStyle}
+          />
           <button
             type="button"
             onClick={() => setStyle(DEFAULT_QR_STYLE)}
@@ -255,7 +269,7 @@ export function QrGenerator() {
         )}
         <QrDownload
           matrix={matrix}
-          style={debouncedStyle}
+          style={effectiveStyle}
           filenameBase={`qr-${data.type}`}
         />
       </div>

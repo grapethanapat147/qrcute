@@ -5,6 +5,7 @@ import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label, Select } from "@/components/ui/input";
 import type { QrMatrix } from "@/lib/qr/encode";
+import { rasterizeLogoToJpeg } from "@/lib/qr/logo";
 import {
   moduleSizeMm,
   PRINT_PRESETS,
@@ -38,6 +39,7 @@ export type QrDownloadProps = {
 export function QrDownload({ matrix, style, filenameBase }: QrDownloadProps) {
   const presetId = useId();
   const [busySize, setBusySize] = useState<number | null>(null);
+  const [busyPdf, setBusyPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preset, setPreset] = useState<PrintPreset>(
     () => PRINT_PRESETS[0] as PrintPreset,
@@ -68,12 +70,20 @@ export function QrDownload({ matrix, style, filenameBase }: QrDownloadProps) {
     triggerDownload(blob, `${filenameBase}.svg`);
   }
 
-  function downloadPdf() {
+  async function downloadPdf() {
     if (matrix === null) return;
+    setBusyPdf(true);
     setError(null);
     try {
+      // แปลงโลโก้เป็น JPEG ก่อน เพราะ PDF ฝังไบต์ JPEG ได้ตรง ๆ
+      const logo =
+        style.logo === null
+          ? null
+          : await rasterizeLogoToJpeg(style.logo.src, style.paper);
+
       const blob = renderPdfBlob(matrix, {
         style,
+        logo,
         pageWidthMm: preset.pageWidthMm,
         pageHeightMm: preset.pageHeightMm,
         qrSizeMm: preset.qrSizeMm,
@@ -81,6 +91,8 @@ export function QrDownload({ matrix, style, filenameBase }: QrDownloadProps) {
       triggerDownload(blob, `${filenameBase}-${preset.id}.pdf`);
     } catch {
       setError("สร้าง PDF ไม่สำเร็จ ลองใหม่อีกครั้ง");
+    } finally {
+      setBusyPdf(false);
     }
   }
 
@@ -175,12 +187,12 @@ export function QrDownload({ matrix, style, filenameBase }: QrDownloadProps) {
         <Button
           type="button"
           className="w-full"
-          disabled={disabled}
-          onClick={downloadPdf}
+          disabled={disabled || busyPdf}
+          onClick={() => void downloadPdf()}
           aria-label="ดาวน์โหลด PDF สำหรับงานพิมพ์"
         >
           <Download aria-hidden />
-          ดาวน์โหลด PDF
+          {busyPdf ? "กำลังสร้าง PDF…" : "ดาวน์โหลด PDF"}
         </Button>
 
         <p className="text-sm text-muted-foreground">

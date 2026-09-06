@@ -198,6 +198,8 @@ export function qrStyleFromSearchParams(params: URLSearchParams): QrStyle {
     ),
     eyeColor: null,
     margin: params.get("m") === null ? DEFAULT_QR_STYLE.margin : margin,
+    // โลโก้ไม่อยู่ใน URL — data URI ยาวเกินกว่าจะแชร์ผ่านลิงก์ได้
+    logo: null,
   };
 }
 

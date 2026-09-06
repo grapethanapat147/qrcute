@@ -1,7 +1,8 @@
 import type { QrMatrix } from "./encode";
-import { formatNumber, toPdfPathData } from "./geometry";
+import { formatNumber, roundedRect, toPdfPathData } from "./geometry";
+import type { LogoRaster } from "./logo";
 import { mmToPt } from "./print";
-import { qrPaths } from "./render-svg";
+import { logoLayout, qrPaths } from "./render-svg";
 import { parseHexColor, type QrStyle } from "./style";
 
 /**
@@ -51,6 +52,8 @@ export type PdfRenderOptions = {
   pageWidthMm: number;
   pageHeightMm: number;
   qrSizeMm: number;
+  /** โลโก้ที่แปลงเป็น JPEG แล้ว — ต้องเตรียมจากฝั่ง browser ก่อนเรียก */
+  logo?: LogoRaster | null;
 };
 
 function buildContentStream(
@@ -85,7 +88,57 @@ function buildContentStream(
     toPdfPathData(paths.eyeBalls),
     "f",
     "Q",
+    ...logoOperators(matrix, options, { offsetX, offsetY, qrSizePt, scale }),
   ].join("\n");
+}
+
+type Placement = {
+  offsetX: number;
+  offsetY: number;
+  qrSizePt: number;
+  scale: number;
+};
+
+function logoOperators(
+  matrix: QrMatrix,
+  options: PdfRenderOptions,
+  place: Placement,
+): string[] {
+  const layout = logoLayout(matrix, options.style);
+  if (layout === null || options.logo === undefined || options.logo === null) {
+    return [];
+  }
+
+  const n = formatNumber;
+  const radius = layout.backdropRadius;
+
+  // ตัวภาพวาดในพิกัดหน้ากระดาษ (แกน Y ชี้ขึ้น) จึงต้องกลับด้าน y ของ layout เอง
+  const sidePt = layout.side * place.scale;
+  const imageX = place.offsetX + layout.x * place.scale;
+  const imageY =
+    place.offsetY + place.qrSizePt - (layout.y + layout.side) * place.scale;
+
+  return [
+    // เจาะพื้นหลังก่อน ใช้พิกัดที่พลิกแกนแล้วชุดเดียวกับ QR เพื่อให้ตรงกับบนจอ
+    "q",
+    cmykOperator(options.style.paper),
+    `${n(place.scale)} 0 0 ${n(-place.scale)} ${n(place.offsetX)} ${n(place.offsetY + place.qrSizePt)} cm`,
+    toPdfPathData(
+      roundedRect(
+        layout.backdropX,
+        layout.backdropY,
+        layout.backdropSide,
+        layout.backdropSide,
+        [radius, radius, radius, radius],
+      ),
+    ),
+    "f",
+    "Q",
+    "q",
+    `${n(sidePt)} 0 0 ${n(sidePt)} ${n(imageX)} ${n(imageY)} cm`,
+    "/Logo Do",
+    "Q",
+  ];
 }
 
 /**
@@ -99,13 +152,30 @@ export function renderPdf(matrix: QrMatrix, options: PdfRenderOptions): string {
   const widthPt = formatNumber(mmToPt(options.pageWidthMm));
   const heightPt = formatNumber(mmToPt(options.pageHeightMm));
 
+  const logo = options.logo ?? null;
+  const hasLogo = logo !== null && options.style.logo !== null;
+
+  const resources = hasLogo
+    ? "<< /ProcSet [/PDF /ImageC] /XObject << /Logo 6 0 R >> >>"
+    : "<< /ProcSet [/PDF] >>";
+
   const objects = [
     "<< /Type /Catalog /Pages 2 0 R >>",
     "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${widthPt} ${heightPt}] /Contents 4 0 R /Resources << /ProcSet [/PDF] >> >>`,
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${widthPt} ${heightPt}] /Contents 4 0 R /Resources ${resources} >>`,
     `<< /Length ${content.length} >>\nstream\n${content}\nendstream`,
     "<< /Producer (QR Thai) >>",
   ];
+
+  if (hasLogo) {
+    // ฝังไบต์ JPEG ตรง ๆ ผ่าน DCTDecode และหุ้มด้วย ASCIIHexDecode อีกชั้น
+    // เพื่อให้ไฟล์ยังเป็น ASCII ล้วน — ตำแหน่งตัวอักษรจึงเท่ากับตำแหน่ง byte
+    // และคำนวณ xref ได้เหมือนเดิม แลกกับขนาดไฟล์ที่โตขึ้นเท่าตัวเฉพาะส่วนโลโก้
+    const hexStream = `${logo.hex}>`;
+    objects.push(
+      `<< /Type /XObject /Subtype /Image /Width ${logo.widthPx} /Height ${logo.heightPx} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter [/ASCIIHexDecode /DCTDecode] /Length ${hexStream.length} >>\nstream\n${hexStream}\nendstream`,
+    );
+  }
 
   let pdf = "%PDF-1.4\n";
   const offsets: number[] = [];

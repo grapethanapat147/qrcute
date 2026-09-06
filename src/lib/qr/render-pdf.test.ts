@@ -172,3 +172,76 @@ describe("คำแนะนำขนาด", () => {
     expect(moduleSizeMm(suggested, 100)).toBeGreaterThanOrEqual(MIN_MODULE_MM);
   });
 });
+
+describe("โลโก้ใน PDF", () => {
+  const logoRaster = { hex: "ffd8ffdb00", widthPx: 512, heightPx: 512 };
+  const styleWithLogo = {
+    ...DEFAULT_QR_STYLE,
+    logo: { src: "data:image/png;base64,AAAA", sizeRatio: 0.25 },
+  };
+
+  function pdfWithLogo() {
+    return renderPdf(matrix, {
+      style: styleWithLogo,
+      logo: logoRaster,
+      pageWidthMm: 50,
+      pageHeightMm: 50,
+      qrSizeMm: 50,
+    });
+  }
+
+  it("ไม่มีโลโก้ก็ไม่ประกาศ XObject ให้เปลือง", () => {
+    const pdf = pdfFor();
+    expect(pdf).not.toContain("/XObject");
+    expect(pdf).not.toContain("/Logo Do");
+  });
+
+  it("ฝังภาพเป็น XObject และเรียกใช้ในหน้า", () => {
+    const pdf = pdfWithLogo();
+    expect(pdf).toContain("/XObject << /Logo 6 0 R >>");
+    expect(pdf).toContain("/Logo Do");
+    expect(pdf).toContain("/Subtype /Image");
+  });
+
+  it("ใช้ DCTDecode หุ้มด้วย ASCIIHexDecode เพื่อให้ไฟล์ยังเป็น ASCII ล้วน", () => {
+    const pdf = pdfWithLogo();
+    expect(pdf).toContain("/Filter [/ASCIIHexDecode /DCTDecode]");
+    expect(new TextEncoder().encode(pdf).length).toBe(pdf.length);
+  });
+
+  it("stream ของภาพจบด้วย > ตามที่ ASCIIHexDecode ต้องการ และ /Length ตรง", () => {
+    const pdf = pdfWithLogo();
+    const match =
+      /\/Filter \[\/ASCIIHexDecode \/DCTDecode\] \/Length (\d+) >>\nstream\n([\s\S]*?)\nendstream/.exec(
+        pdf,
+      );
+    expect(match).not.toBeNull();
+    expect(match?.[2]).toBe(`${logoRaster.hex}>`);
+    expect(match?.[2]?.length).toBe(Number(match?.[1]));
+  });
+
+  it("xref ครอบ object ที่เพิ่มมาด้วย", () => {
+    const pdf = pdfWithLogo();
+    expect(pdf).toContain("xref\n0 7");
+    expect(pdf).toContain("/Size 7");
+
+    const entries = (/xref\n0 \d+\n([\s\S]*?)trailer/.exec(pdf)?.[1] ?? "")
+      .trimEnd()
+      .split("\n");
+    entries.slice(1).forEach((entry, index) => {
+      const offset = Number(entry.slice(0, 10));
+      expect(pdf.slice(offset, offset + 8)).toContain(`${index + 1} 0 obj`);
+    });
+  });
+
+  it("ส่ง raster มาแต่ style ไม่มีโลโก้ ต้องไม่วาดอะไร", () => {
+    const pdf = renderPdf(matrix, {
+      style: DEFAULT_QR_STYLE,
+      logo: logoRaster,
+      pageWidthMm: 50,
+      pageHeightMm: 50,
+      qrSizeMm: 50,
+    });
+    expect(pdf).not.toContain("/Logo Do");
+  });
+});

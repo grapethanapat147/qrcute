@@ -2,6 +2,7 @@
 
 import { useId } from "react";
 import { Input, Label, Select } from "@/components/ui/input";
+import type { ErrorCorrectionLevel } from "@/lib/qr/encode";
 import {
   DOT_SHAPE_LABELS,
   DOT_SHAPES,
@@ -15,6 +16,7 @@ import {
   type QrStyle,
 } from "@/lib/qr/style";
 import { cn } from "@/lib/utils";
+import { QrLogoField } from "./qr-logo-field";
 
 type ColorFieldProps = {
   label: string;
@@ -50,10 +52,15 @@ function ColorField({ label, value, onChange }: ColorFieldProps) {
 
 export type QrStyleControlsProps = {
   style: QrStyle;
+  level: ErrorCorrectionLevel;
   onChange: (style: QrStyle) => void;
 };
 
-export function QrStyleControls({ style, onChange }: QrStyleControlsProps) {
+export function QrStyleControls({
+  style,
+  level,
+  onChange,
+}: QrStyleControlsProps) {
   const dotShapeId = useId();
   const eyeFrameId = useId();
   const eyeBallId = useId();
@@ -211,6 +218,12 @@ export function QrStyleControls({ style, onChange }: QrStyleControlsProps) {
           </Select>
         </div>
       </div>
+
+      <QrLogoField
+        logo={style.logo}
+        level={level}
+        onChange={(logo) => onChange({ ...style, logo })}
+      />
 
       <div className="space-y-1.5">
         <Label htmlFor={marginId}>พื้นที่ว่างรอบ QR</Label>

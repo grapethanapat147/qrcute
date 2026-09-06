@@ -174,6 +174,53 @@ export function qrPaths(matrix: QrMatrix, style: QrStyle): QrPaths {
 }
 
 // ---------------------------------------------------------------------------
+// โลโก้
+// ---------------------------------------------------------------------------
+
+/** เว้นขอบรอบโลโก้กี่ module เพื่อไม่ให้โลโก้ติดกับจุดข้อมูลจนดูรก */
+const LOGO_PADDING_MODULES = 0.6;
+
+export type LogoLayout = {
+  /** กรอบพื้นหลังที่เจาะจุดข้อมูลออก */
+  backdropX: number;
+  backdropY: number;
+  backdropSide: number;
+  backdropRadius: number;
+  /** ตัวภาพโลโก้ */
+  x: number;
+  y: number;
+  side: number;
+};
+
+/**
+ * ตำแหน่งและขนาดโลโก้ในหน่วย module
+ *
+ * คิดจากพื้นที่ข้อมูล (ไม่รวมขอบว่าง) เพื่อให้เปลี่ยนขนาดขอบว่างแล้ว
+ * โลโก้ยังใหญ่เท่าเดิมเมื่อเทียบกับตัว QR
+ */
+export function logoLayout(
+  matrix: QrMatrix,
+  style: QrStyle,
+): LogoLayout | null {
+  if (style.logo === null) return null;
+
+  const core = matrix.size - style.margin * 2;
+  const side = core * style.logo.sizeRatio;
+  const center = matrix.size / 2;
+  const backdropSide = side + LOGO_PADDING_MODULES * 2;
+
+  return {
+    backdropX: center - backdropSide / 2,
+    backdropY: center - backdropSide / 2,
+    backdropSide,
+    backdropRadius: backdropSide * 0.12,
+    x: center - side / 2,
+    y: center - side / 2,
+    side,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // gradient
 // ---------------------------------------------------------------------------
 
@@ -223,6 +270,29 @@ export function renderSvg(
   const dimensions =
     size === undefined ? "" : ` width="${size}" height="${size}"`;
 
+  const layout = logoLayout(matrix, style);
+  const logoMarkup =
+    layout === null || style.logo === null
+      ? ""
+      : [
+          // เจาะพื้นหลังก่อน เพื่อไม่ให้โลโก้ทับอยู่บนจุดข้อมูลจนอ่านยาก
+          `<path fill="${style.paper}" d="${toSvgPathData(
+            roundedRect(
+              layout.backdropX,
+              layout.backdropY,
+              layout.backdropSide,
+              layout.backdropSide,
+              [
+                layout.backdropRadius,
+                layout.backdropRadius,
+                layout.backdropRadius,
+                layout.backdropRadius,
+              ],
+            ),
+          )}"/>`,
+          `<image href="${style.logo.src}" x="${layout.x}" y="${layout.y}" width="${layout.side}" height="${layout.side}" preserveAspectRatio="xMidYMid meet"/>`,
+        ].join("");
+
   return [
     `<svg xmlns="http://www.w3.org/2000/svg"${dimensions}`,
     ` viewBox="0 0 ${matrix.size} ${matrix.size}" shape-rendering="geometricPrecision">`,
@@ -231,6 +301,7 @@ export function renderSvg(
     `<path fill="${inkFill}" d="${toSvgPathData(paths.data)}"/>`,
     `<path fill="${eyeFill}" fill-rule="evenodd" d="${toSvgPathData(paths.eyeFrames)}"/>`,
     `<path fill="${eyeFill}" d="${toSvgPathData(paths.eyeBalls)}"/>`,
+    logoMarkup,
     "</svg>",
   ].join("");
 }
