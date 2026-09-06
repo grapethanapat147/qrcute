@@ -5,6 +5,10 @@ import {
   contrastRatio,
   DEFAULT_QR_STYLE,
   DOT_SHAPES,
+  MARGIN_OPTIONS,
+  MAX_MARGIN,
+  MIN_MARGIN,
+  nearestMarginOption,
   parseHexColor,
   QR_STYLE_PRESETS,
   validateStyle,
@@ -135,5 +139,32 @@ describe("dotCoverage", () => {
   it("สี่เหลี่ยมเต็มช่องคือ 1.0 และวงกลมคือ π/4", () => {
     expect(dotCoverage("square")).toBe(1);
     expect(dotCoverage("dot")).toBeCloseTo(Math.PI / 4, 5);
+  });
+});
+
+describe("ตัวเลือกพื้นที่ว่างรอบ QR", () => {
+  it("ทุกตัวเลือกอยู่ในช่วงที่สเปกยอมรับ", () => {
+    for (const option of MARGIN_OPTIONS) {
+      expect(option.value).toBeGreaterThanOrEqual(MIN_MARGIN);
+      expect(option.value).toBeLessThanOrEqual(MAX_MARGIN);
+    }
+  });
+
+  it("มีตัวเลือกที่ตรงกับค่าเริ่มต้น ไม่งั้นผู้ใช้จะเห็นตัวเลือกที่ไม่ตรงกับของจริง", () => {
+    expect(
+      MARGIN_OPTIONS.some((option) => option.value === DEFAULT_QR_STYLE.margin),
+    ).toBe(true);
+  });
+
+  it("เรียงจากแคบไปกว้าง", () => {
+    const values = MARGIN_OPTIONS.map((option) => option.value);
+    expect(values).toEqual([...values].sort((a, b) => a - b));
+  });
+
+  it("ค่านอกรายการจากลิงก์เก่าถูกจับให้ตัวที่ใกล้ที่สุด", () => {
+    expect(nearestMarginOption(4).value).toBe(4);
+    expect(nearestMarginOption(6).value).toBe(7);
+    expect(nearestMarginOption(9).value).toBe(10);
+    expect(nearestMarginOption(100).value).toBe(10);
   });
 });

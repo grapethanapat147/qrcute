@@ -33,6 +33,44 @@ export type GradientDirection = (typeof GRADIENT_DIRECTIONS)[number];
 export const MIN_MARGIN = 4;
 export const MAX_MARGIN = 10;
 
+export type MarginOption = {
+  value: number;
+  label: string;
+  description: string;
+};
+
+/**
+ * ให้เลือกเป็นตัวเลือกที่มีชื่อ แทนที่จะเป็นแถบเลื่อนที่บอกจำนวน "ช่อง"
+ * เพราะผู้ใช้ไม่รู้ว่าช่องคืออะไร และตอบไม่ได้ว่าอยากได้กี่ช่อง
+ * แต่ตอบได้ว่าจะเอาไปตัดเจียนหรือวางบนพื้นลาย
+ */
+export const MARGIN_OPTIONS: MarginOption[] = [
+  {
+    value: 4,
+    label: "ปกติ",
+    description: "ขอบมาตรฐาน — ได้ QR ใหญ่ที่สุดเมื่อเทียบกับพื้นที่ที่มี",
+  },
+  {
+    value: 7,
+    label: "กว้าง",
+    description: "เช่น สติกเกอร์หรือป้ายที่ต้องตัดเจียน — เผื่อให้ตัดพลาดได้โดยไม่กินตัว QR",
+  },
+  {
+    value: 10,
+    label: "กว้างมาก",
+    description: "เช่น วางทับภาพหรือพื้นสี — กันไม่ให้ลวดลายรอบข้างรบกวนการสแกน",
+  },
+];
+
+/** เผื่อกรณีลิงก์เก่าที่มีค่า margin นอกรายการ ให้เลือกตัวที่ใกล้ที่สุด */
+export function nearestMarginOption(margin: number): MarginOption {
+  return MARGIN_OPTIONS.reduce((closest, option) =>
+    Math.abs(option.value - margin) < Math.abs(closest.value - margin)
+      ? option
+      : closest,
+  );
+}
+
 export type QrStyle = {
   /** สีจุด (สีเข้ม) */
   ink: string;

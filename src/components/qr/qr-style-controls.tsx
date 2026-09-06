@@ -9,8 +9,8 @@ import {
   EYE_SHAPES,
   GRADIENT_DIRECTION_LABELS,
   GRADIENT_DIRECTIONS,
-  MAX_MARGIN,
-  MIN_MARGIN,
+  MARGIN_OPTIONS,
+  nearestMarginOption,
   QR_STYLE_PRESETS,
   type QrStyle,
 } from "@/lib/qr/style";
@@ -61,6 +61,7 @@ export function QrStyleControls({ style, onChange }: QrStyleControlsProps) {
   const marginId = useId();
   const presetGroupId = useId();
 
+  const activeMargin = nearestMarginOption(style.margin);
   const activePreset = QR_STYLE_PRESETS.find(
     (preset) => JSON.stringify(preset.style) === JSON.stringify(style),
   );
@@ -212,21 +213,22 @@ export function QrStyleControls({ style, onChange }: QrStyleControlsProps) {
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor={marginId}>ขอบขาวรอบ QR ({style.margin} ช่อง)</Label>
-        <input
+        <Label htmlFor={marginId}>พื้นที่ว่างรอบ QR</Label>
+        <Select
           id={marginId}
-          type="range"
-          min={MIN_MARGIN}
-          max={MAX_MARGIN}
-          step={1}
-          value={style.margin}
+          value={String(activeMargin.value)}
           onChange={(event) =>
             onChange({ ...style, margin: Number(event.target.value) })
           }
-          className="w-full accent-primary"
-        />
+        >
+          {MARGIN_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </Select>
         <p className="text-sm text-muted-foreground">
-          ขั้นต่ำ {MIN_MARGIN} ช่องตามสเปก QR — น้อยกว่านี้เครื่องอ่านหาขอบไม่เจอ
+          {activeMargin.description}
         </p>
       </div>
     </div>
