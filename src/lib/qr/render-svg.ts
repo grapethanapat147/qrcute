@@ -1,5 +1,11 @@
 import type { QrMatrix } from "./encode";
 import {
+  type PathCommand,
+  type Radii,
+  roundedRect,
+  toSvgPathData,
+} from "./geometry";
+import {
   DEFAULT_QR_STYLE,
   type DotShape,
   type EyeShape,
@@ -9,7 +15,7 @@ import {
 /** ขนาดของ finder pattern ตามสเปก QR — 7×7 module ที่มุมสามมุม */
 const FINDER_SIZE = 7;
 
-type Corner = { x: number; y: number };
+export type Corner = { x: number; y: number };
 
 /**
  * ตำแหน่งของ finder pattern ทั้งสามมุม
@@ -17,7 +23,7 @@ type Corner = { x: number; y: number };
  * คำนวณจาก margin ได้ตรง ๆ เพราะเรากำหนด quiet zone เอง
  * ไม่ต้องพึ่งการเดาจากข้อมูลใน matrix
  */
-function finderCorners(size: number, margin: number): Corner[] {
+export function finderCorners(size: number, margin: number): Corner[] {
   const last = size - margin - FINDER_SIZE;
   return [
     { x: margin, y: margin },
@@ -36,44 +42,11 @@ function isInsideFinder(x: number, y: number, corners: Corner[]): boolean {
   );
 }
 
-// ---------------------------------------------------------------------------
-// path helpers
-// ---------------------------------------------------------------------------
-
-type Radii = [number, number, number, number];
-
-/** สี่เหลี่ยมที่กำหนดรัศมีมุมได้ทีละมุม (บนซ้าย, บนขวา, ล่างขวา, ล่างซ้าย) */
-function roundedRectPath(
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radii: Radii,
-): string {
-  const limit = Math.min(width, height) / 2;
-  const [tl, tr, br, bl] = radii.map((radius) =>
-    Math.max(0, Math.min(radius, limit)),
-  ) as Radii;
-
-  return [
-    `M${x + tl} ${y}`,
-    `H${x + width - tr}`,
-    tr > 0 ? `A${tr} ${tr} 0 0 1 ${x + width} ${y + tr}` : "",
-    `V${y + height - br}`,
-    br > 0 ? `A${br} ${br} 0 0 1 ${x + width - br} ${y + height}` : "",
-    `H${x + bl}`,
-    bl > 0 ? `A${bl} ${bl} 0 0 1 ${x} ${y + height - bl}` : "",
-    `V${y + tl}`,
-    tl > 0 ? `A${tl} ${tl} 0 0 1 ${x + tl} ${y}` : "",
-    "Z",
-  ].join("");
-}
-
 /**
  * สัดส่วนพื้นที่ทึบของรูปทรงจุด เทียบกับ module สี่เหลี่ยมเต็ม
  *
  * ใช้เป็นเกณฑ์กันไม่ให้เพิ่มรูปทรงที่บางเกินจนสแกนไม่ติด
- * ค่าต่ำสุดที่ยืนยันแล้วว่าใช้ได้คือวงกลม (π/4 ≈ 0.785)
+ * ค่าต่ำสุดที่ยืนยันด้วยการ decode จริงแล้วว่าใช้ได้คือวงกลม (π/4 ≈ 0.785)
  */
 export function dotCoverage(shape: DotShape): number {
   switch (shape) {
@@ -87,16 +60,16 @@ export function dotCoverage(shape: DotShape): number {
   }
 }
 
-function circlePath(x: number, y: number, size: number): string {
-  const radius = size / 2;
-  const centerX = x + radius;
-  const centerY = y + radius;
-  return [
-    `M${centerX - radius} ${centerY}`,
-    `a${radius} ${radius} 0 1 0 ${radius * 2} 0`,
-    `a${radius} ${radius} 0 1 0 ${-radius * 2} 0`,
-    "Z",
-  ].join("");
+function dotRadii(shape: DotShape): Radii {
+  switch (shape) {
+    case "square":
+      return [0, 0, 0, 0];
+    case "rounded":
+      return [0.3, 0.3, 0.3, 0.3];
+    case "dot":
+      // รัศมีเท่าครึ่งด้าน = วงกลมพอดี
+      return [0.5, 0.5, 0.5, 0.5];
+  }
 }
 
 /** รัศมีมุมของรูปทรงตามุม เทียบกับด้านยาวของกรอบ */
@@ -114,23 +87,24 @@ function eyeRadii(shape: EyeShape, side: number): Radii {
 }
 
 // ---------------------------------------------------------------------------
-// สร้าง path ของแต่ละส่วน
+// สร้างเส้นทางของแต่ละส่วน
 // ---------------------------------------------------------------------------
 
-/** path ของจุดข้อมูลทั้งหมด (ไม่รวมตามุม) */
-export function dataModulesPath(
+/** จุดข้อมูลทั้งหมด (ไม่รวมตามุม) */
+export function dataModuleCommands(
   matrix: QrMatrix,
   shape: DotShape,
   corners: Corner[],
-): string {
-  const segments: string[] = [];
+): PathCommand[] {
+  const commands: PathCommand[] = [];
+  const radii = dotRadii(shape);
 
   for (let y = 0; y < matrix.size; y += 1) {
     const row = matrix.data[y];
     if (row === undefined) continue;
 
     if (shape === "square") {
-      // รวม module ที่ติดกันในแนวนอนเป็นสี่เหลี่ยมเดียว ทำให้ไฟล์เล็กลงมาก
+      // รวม module ที่ติดกันในแนวนอนเป็นสี่เหลี่ยมเดียว ลดจำนวนเส้นทางลงมาก
       let runStart = -1;
       for (let x = 0; x <= matrix.size; x += 1) {
         const filled =
@@ -138,8 +112,7 @@ export function dataModulesPath(
         if (filled && runStart === -1) {
           runStart = x;
         } else if (!filled && runStart !== -1) {
-          const length = x - runStart;
-          segments.push(`M${runStart} ${y}h${length}v1h-${length}z`);
+          commands.push(...roundedRect(runStart, y, x - runStart, 1, radii));
           runStart = -1;
         }
       }
@@ -148,48 +121,56 @@ export function dataModulesPath(
 
     for (let x = 0; x < matrix.size; x += 1) {
       if (row[x] !== true || isInsideFinder(x, y, corners)) continue;
-
-      switch (shape) {
-        case "rounded":
-          segments.push(roundedRectPath(x, y, 1, 1, [0.3, 0.3, 0.3, 0.3]));
-          break;
-        case "dot":
-          segments.push(circlePath(x, y, 1));
-          break;
-      }
+      commands.push(...roundedRect(x, y, 1, 1, radii));
     }
   }
 
-  return segments.join("");
+  return commands;
 }
 
-/** path ของกรอบตามุมทั้งสาม (วงแหวนหนา 1 module) */
-export function eyeFramesPath(corners: Corner[], shape: EyeShape): string {
+/** กรอบตามุมทั้งสาม — วงแหวนหนา 1 module (ใช้กฎ even-odd เจาะรูตรงกลาง) */
+export function eyeFrameCommands(
+  corners: Corner[],
+  shape: EyeShape,
+): PathCommand[] {
   const outerRadii = eyeRadii(shape, FINDER_SIZE);
   const innerRadii = outerRadii.map((radius) =>
     Math.max(0, radius - 1),
   ) as Radii;
 
-  return corners
-    .map(
-      (corner) =>
-        roundedRectPath(
-          corner.x,
-          corner.y,
-          FINDER_SIZE,
-          FINDER_SIZE,
-          outerRadii,
-        ) + roundedRectPath(corner.x + 1, corner.y + 1, 5, 5, innerRadii),
-    )
-    .join("");
+  return corners.flatMap((corner) => [
+    ...roundedRect(corner.x, corner.y, FINDER_SIZE, FINDER_SIZE, outerRadii),
+    ...roundedRect(corner.x + 1, corner.y + 1, 5, 5, innerRadii),
+  ]);
 }
 
-/** path ของจุดกลางตามุมทั้งสาม (3×3 module) */
-export function eyeBallsPath(corners: Corner[], shape: EyeShape): string {
+/** จุดกลางตามุมทั้งสาม (3×3 module) */
+export function eyeBallCommands(
+  corners: Corner[],
+  shape: EyeShape,
+): PathCommand[] {
   const radii = eyeRadii(shape, 3);
-  return corners
-    .map((corner) => roundedRectPath(corner.x + 2, corner.y + 2, 3, 3, radii))
-    .join("");
+  return corners.flatMap((corner) =>
+    roundedRect(corner.x + 2, corner.y + 2, 3, 3, radii),
+  );
+}
+
+export type QrPaths = {
+  data: PathCommand[];
+  eyeFrames: PathCommand[];
+  eyeBalls: PathCommand[];
+};
+
+/**
+ * เส้นทางทั้งสามกลุ่มของ QR — เป็นแหล่งความจริงเดียวที่ทั้ง SVG, PNG และ PDF ใช้ร่วมกัน
+ */
+export function qrPaths(matrix: QrMatrix, style: QrStyle): QrPaths {
+  const corners = finderCorners(matrix.size, style.margin);
+  return {
+    data: dataModuleCommands(matrix, style.dotShape, corners),
+    eyeFrames: eyeFrameCommands(corners, style.eyeFrameShape),
+    eyeBalls: eyeBallCommands(corners, style.eyeBallShape),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -233,7 +214,7 @@ export function renderSvg(
 ): string {
   const { size, style = DEFAULT_QR_STYLE, idPrefix = "qr" } = options;
 
-  const corners = finderCorners(matrix.size, style.margin);
+  const paths = qrPaths(matrix, style);
   const gradientId = `${idPrefix}-gradient`;
   const inkFill =
     style.gradientDirection === "none" ? style.ink : `url(#${gradientId})`;
@@ -247,9 +228,9 @@ export function renderSvg(
     ` viewBox="0 0 ${matrix.size} ${matrix.size}" shape-rendering="geometricPrecision">`,
     gradientDefs(style, gradientId),
     `<rect width="${matrix.size}" height="${matrix.size}" fill="${style.paper}"/>`,
-    `<path fill="${inkFill}" d="${dataModulesPath(matrix, style.dotShape, corners)}"/>`,
-    `<path fill="${eyeFill}" fill-rule="evenodd" d="${eyeFramesPath(corners, style.eyeFrameShape)}"/>`,
-    `<path fill="${eyeFill}" d="${eyeBallsPath(corners, style.eyeBallShape)}"/>`,
+    `<path fill="${inkFill}" d="${toSvgPathData(paths.data)}"/>`,
+    `<path fill="${eyeFill}" fill-rule="evenodd" d="${toSvgPathData(paths.eyeFrames)}"/>`,
+    `<path fill="${eyeFill}" d="${toSvgPathData(paths.eyeBalls)}"/>`,
     "</svg>",
   ].join("");
 }

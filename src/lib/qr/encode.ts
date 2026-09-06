@@ -13,43 +13,86 @@ export type QrMatrix = {
   version: number;
 };
 
+/**
+ * ระดับการเผื่อข้อมูลซ้ำ (error correction)
+ *
+ * QR เก็บข้อมูลซ้ำไว้เผื่อบางส่วนเสียหาย ตัวเลข recovery คือสัดส่วนพื้นที่ที่
+ * เสียหายได้แล้วยังอ่านออก แลกมาด้วยจำนวน module ที่มากขึ้น (จุดถี่ขึ้น)
+ *
+ * ⚠️ อย่าเอาค่าพวกนี้ไปโชว์ผู้ใช้ตรง ๆ — ผู้ใช้ตอบไม่ได้ว่าอยากได้กี่เปอร์เซ็นต์
+ * ให้ถามจากสถานการณ์การใช้งานผ่าน QR_USE_CASES แทน แล้วแปลงเป็นระดับให้
+ */
 export type ErrorCorrectionInfo = {
   level: ErrorCorrectionLevel;
   /** กู้คืนข้อมูลที่เสียหายได้กี่ % */
   recovery: number;
-  label: string;
-  description: string;
 };
 
 export const ERROR_CORRECTION_INFO: Record<
   ErrorCorrectionLevel,
   ErrorCorrectionInfo
 > = {
-  L: {
-    level: "L",
-    recovery: 7,
-    label: "ต่ำ (L)",
-    description: "QR เล็กที่สุด เหมาะกับหน้าจอหรือที่ที่ไม่มีอะไรมาบัง",
-  },
-  M: {
-    level: "M",
-    recovery: 15,
-    label: "กลาง (M)",
-    description: "ค่าเริ่มต้นที่เหมาะกับงานทั่วไป สมดุลระหว่างขนาดกับความทนทาน",
-  },
-  Q: {
-    level: "Q",
-    recovery: 25,
-    label: "สูง (Q)",
-    description: "เหมาะกับป้ายหน้าร้านหรือสติกเกอร์ที่อาจมีรอยขีดข่วน",
-  },
-  H: {
-    level: "H",
-    recovery: 30,
-    label: "สูงสุด (H)",
-    description: "จำเป็นเมื่อจะใส่โลโก้ตรงกลาง หรือพิมพ์บนวัสดุที่สึกง่าย",
-  },
+  L: { level: "L", recovery: 7 },
+  M: { level: "M", recovery: 15 },
+  Q: { level: "Q", recovery: 25 },
+  H: { level: "H", recovery: 30 },
 };
+
+export const QR_USE_CASE_IDS = [
+  "screen",
+  "print",
+  "outdoor",
+  "durable",
+] as const;
+export type QrUseCaseId = (typeof QR_USE_CASE_IDS)[number];
+
+export type QrUseCase = {
+  id: QrUseCaseId;
+  label: string;
+  description: string;
+  level: ErrorCorrectionLevel;
+};
+
+/**
+ * คำถามที่ผู้ใช้ตอบได้จริงคือ "จะเอาไปใช้ที่ไหน" ไม่ใช่ "อยากเผื่อกี่เปอร์เซ็นต์"
+ * แต่ละตัวเลือกจับคู่กับระดับ error correction แบบหนึ่งต่อหนึ่ง
+ */
+export const QR_USE_CASES: QrUseCase[] = [
+  {
+    id: "screen",
+    label: "บนจอ หรือส่งเป็นไฟล์",
+    description: "จุดโปร่งที่สุด เหมาะกับที่ที่ไม่มีอะไรมาบังและไม่ต้องพิมพ์",
+    level: "L",
+  },
+  {
+    id: "print",
+    label: "พิมพ์ใช้งานทั่วไป",
+    description: "เมนู นามบัตร ใบเสร็จ — สมดุลระหว่างความถี่ของจุดกับความทนทาน",
+    level: "M",
+  },
+  {
+    id: "outdoor",
+    label: "ติดหน้าร้าน หรือกลางแจ้ง",
+    description: "ทนฝุ่น รอยขีดข่วน และแดดได้มากขึ้น",
+    level: "Q",
+  },
+  {
+    id: "durable",
+    label: "ต้องทนที่สุด",
+    description: "สำหรับป้ายที่โดนขูดบ่อย หรือกรณีมีอะไรมาบังบางส่วนของ QR",
+    level: "H",
+  },
+];
+
+const DEFAULT_USE_CASE = QR_USE_CASES[1] as QrUseCase;
+
+export function findUseCaseByLevel(level: ErrorCorrectionLevel): QrUseCase {
+  return QR_USE_CASES.find((item) => item.level === level) ?? DEFAULT_USE_CASE;
+}
+
+export function findUseCaseById(id: string): QrUseCase {
+  return QR_USE_CASES.find((item) => item.id === id) ?? DEFAULT_USE_CASE;
+}
 
 export class QrEncodeError extends Error {
   override name = "QrEncodeError";

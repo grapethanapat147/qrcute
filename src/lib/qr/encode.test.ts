@@ -1,7 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { encodeQr, QrEncodeError, QUIET_ZONE_MODULES } from "./encode";
+import {
+  ERROR_CORRECTION_INFO,
+  ERROR_CORRECTION_LEVELS,
+  encodeQr,
+  findUseCaseById,
+  findUseCaseByLevel,
+  QR_USE_CASES,
+  QrEncodeError,
+  QUIET_ZONE_MODULES,
+} from "./encode";
+import { toSvgPathData } from "./geometry";
 import { snapSizeToModules, svgToDataUri } from "./render-png";
-import { dataModulesPath, renderSvg } from "./render-svg";
+import { dataModuleCommands, renderSvg } from "./render-svg";
 import { DEFAULT_QR_STYLE, type QrStyle } from "./style";
 
 describe("encodeQr", () => {
@@ -86,9 +96,13 @@ describe("renderSvg", () => {
       ],
     };
 
-    // margin 4 กับ matrix ขนาด 4 แปลว่าไม่มี module ไหนอยู่ในกรอบตามุม
-    const path = dataModulesPath(matrix, "square", []);
-    expect(path).toBe("M0 0h3v1h-3zM1 1h1v1h-1zM0 3h1v1h-1zM3 3h1v1h-1z");
+    // ไม่ส่งตำแหน่งตามุมเข้าไป แปลว่านับทุก module เป็นจุดข้อมูล
+    // 4 กลุ่ม × 5 คำสั่ง (M + L สามครั้ง + Z) = 20 คำสั่ง
+    const commands = dataModuleCommands(matrix, "square", []);
+    expect(commands).toHaveLength(20);
+    expect(toSvgPathData(commands)).toBe(
+      "M0 0L3 0L3 1L0 1ZM1 1L2 1L2 2L1 2ZM0 3L1 3L1 4L0 4ZM3 3L4 3L4 4L3 4Z",
+    );
   });
 
   it("แต่ละรูปทรงจุดสร้าง path ที่ต่างกันจริง", () => {
@@ -139,5 +153,32 @@ describe("render-png helpers", () => {
     expect(decodeURIComponent(uri.split(",")[1] ?? "")).toBe(
       "<svg><rect/></svg>",
     );
+  });
+});
+
+describe("การเลือกจากสถานการณ์ใช้งาน", () => {
+  it("ทุกระดับ error correction ต้องมีสถานการณ์รองรับพอดีหนึ่งอัน", () => {
+    for (const level of ERROR_CORRECTION_LEVELS) {
+      const matching = QR_USE_CASES.filter((item) => item.level === level);
+      expect(matching, `ระดับ ${level} ต้องมีตัวเลือกเดียว`).toHaveLength(1);
+    }
+  });
+
+  it("แปลงจากระดับกลับไปเป็นสถานการณ์ได้ตรงกัน", () => {
+    for (const useCase of QR_USE_CASES) {
+      expect(findUseCaseByLevel(useCase.level).id).toBe(useCase.id);
+      expect(findUseCaseById(useCase.id).level).toBe(useCase.level);
+    }
+  });
+
+  it("ค่าที่ไม่รู้จักถอยไปที่งานพิมพ์ทั่วไป (M) ไม่ใช่พังหรือเป็น L", () => {
+    expect(findUseCaseById("ไม่มีอันนี้").level).toBe("M");
+  });
+
+  it("เรียงจากเผื่อน้อยไปเผื่อมาก เพื่อให้ตัวเลือกใน UI ไล่ระดับตามธรรมชาติ", () => {
+    const recoveries = QR_USE_CASES.map(
+      (item) => ERROR_CORRECTION_INFO[item.level].recovery,
+    );
+    expect(recoveries).toEqual([...recoveries].sort((a, b) => a - b));
   });
 });

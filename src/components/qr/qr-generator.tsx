@@ -5,9 +5,11 @@ import { useEffect, useId, useMemo, useState } from "react";
 import { Label, Select } from "@/components/ui/input";
 import {
   ERROR_CORRECTION_INFO,
-  ERROR_CORRECTION_LEVELS,
   type ErrorCorrectionLevel,
   encodeQr,
+  findUseCaseById,
+  findUseCaseByLevel,
+  QR_USE_CASES,
   type QrMatrix,
 } from "@/lib/qr/encode";
 import { buildPayload } from "@/lib/qr/payload";
@@ -93,6 +95,7 @@ export function QrGenerator() {
     qrStyleFromSearchParams(searchParams),
   );
 
+  const activeUseCase = findUseCaseByLevel(level);
   const debouncedData = useDebouncedValue(data);
   const debouncedLevel = useDebouncedValue(level);
   const debouncedStyle = useDebouncedValue(style);
@@ -195,23 +198,31 @@ export function QrGenerator() {
           <QrFields data={data} onChange={setData} />
 
           <div className="space-y-1.5">
-            <Label htmlFor={eccId}>ระดับการกู้คืนข้อมูล</Label>
+            <Label htmlFor={eccId}>จะเอา QR นี้ไปใช้ที่ไหน</Label>
             <Select
               id={eccId}
-              value={level}
+              value={activeUseCase.id}
               onChange={(event) =>
-                setLevel(event.target.value as ErrorCorrectionLevel)
+                setLevel(findUseCaseById(event.target.value).level)
               }
             >
-              {ERROR_CORRECTION_LEVELS.map((option) => (
-                <option key={option} value={option}>
-                  {ERROR_CORRECTION_INFO[option].label} — กู้คืนได้{" "}
-                  {ERROR_CORRECTION_INFO[option].recovery}%
+              {QR_USE_CASES.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
                 </option>
               ))}
             </Select>
             <p className="text-sm text-muted-foreground">
-              {ERROR_CORRECTION_INFO[level].description}
+              {activeUseCase.description}
+            </p>
+            {/*
+              ตัวเลขทางเทคนิคอยู่เป็นข้อความรอง ไม่ใช่ตัวเลือกหลัก
+              เพราะผู้ใช้ส่วนใหญ่ตอบไม่ได้ว่าอยากเผื่อข้อมูลกี่เปอร์เซ็นต์
+              แต่คนที่รู้จักอยู่แล้วและทีม support ยังต้องอ้างอิงระดับได้
+            */}
+            <p className="text-xs text-muted-foreground">
+              QR จะเผื่อข้อมูลซ้ำไว้ {ERROR_CORRECTION_INFO[level].recovery}% ของพื้นที่
+              (ระดับ {level}) — เสียหายไม่เกินนี้ยังสแกนติด แต่ยิ่งเผื่อมาก จุดยิ่งถี่
             </p>
           </div>
         </div>
