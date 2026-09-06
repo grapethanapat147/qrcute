@@ -1,6 +1,17 @@
 import { QrCode } from "lucide-react";
+import { Suspense } from "react";
+import { QrGenerator } from "@/components/qr/qr-generator";
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/lib/site";
+
+function GeneratorFallback() {
+  return (
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="h-96 animate-pulse rounded-lg bg-muted" />
+      <div className="aspect-square animate-pulse rounded-lg bg-muted" />
+    </div>
+  );
+}
 
 export default function Home() {
   return (
@@ -17,7 +28,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-16">
+      <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-12">
         <h1 className="max-w-3xl text-4xl font-bold sm:text-5xl">
           สร้าง QR Code ฟรี ไม่มีวันหมดอายุ
         </h1>
@@ -25,20 +36,14 @@ export default function Home() {
           {siteConfig.description}
         </p>
 
-        {/* ตัว generator จะมาแทนที่กล่องนี้ใน Phase 1 — ดู docs/roadmap.md */}
-        <div className="mt-10 grid gap-6 rounded-xl border border-dashed p-8 sm:grid-cols-[1fr_auto]">
-          <div className="space-y-2">
-            <p className="font-medium">พื้นที่ของ generator</p>
-            <p className="text-sm text-muted-foreground">
-              Phase 1 จะวางฟอร์มสร้าง QR ไว้ตรงนี้ โดย render ฝั่ง client ทั้งหมด
-            </p>
-          </div>
-          <div
-            className="grid aspect-square w-40 place-items-center rounded-lg bg-qr-paper text-qr-ink"
-            aria-hidden
-          >
-            <QrCode className="size-20" strokeWidth={1.25} />
-          </div>
+        <div className="mt-10">
+          {/*
+            useSearchParams ต้องอยู่ใต้ Suspense ไม่งั้น client component tree
+            ทั้งก้อนจะหลุดจากการ prerender (ดู docs ของ Next 16)
+          */}
+          <Suspense fallback={<GeneratorFallback />}>
+            <QrGenerator />
+          </Suspense>
         </div>
       </main>
 
