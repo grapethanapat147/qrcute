@@ -1,11 +1,10 @@
 import { QrCode } from "lucide-react";
-import type { QrMatrix } from "@/lib/qr/encode";
-import { renderMatrixPath } from "@/lib/qr/render-svg";
 
 export type QrPreviewProps = {
-  /** เป็น null เมื่อยังกรอกไม่ครบหรือ encode ไม่ผ่าน */
-  matrix: QrMatrix | null;
+  /** data URI ของ SVG — เป็น null เมื่อยังกรอกไม่ครบหรือ encode ไม่ผ่าน */
+  src: string | null;
   error: string | null;
+  warning: string | null;
   /** ข้อความอธิบาย QR สำหรับ screen reader */
   description: string;
 };
@@ -13,13 +12,17 @@ export type QrPreviewProps = {
 /**
  * แสดงผล QR อย่างเดียว ไม่มี logic
  *
- * วาดเป็น JSX จาก path data แทนที่จะยัด SVG string เข้า innerHTML
- * (renderSvg ที่คืน string ใช้เฉพาะตอนดาวน์โหลดไฟล์)
+ * ใช้ <img> ที่ชี้ไป data URI ของ SVG ตัวเดียวกับที่ใช้ตอนดาวน์โหลดและตอนแปลงเป็น PNG
+ * ทำให้สิ่งที่ผู้ใช้เห็นกับไฟล์ที่ได้เป็นของชิ้นเดียวกันเสมอ
  *
- * สีใช้ token qr-paper/qr-ink ที่ไม่เปลี่ยนตาม theme ตาม business invariant ข้อ 5
- * เพราะ QR ที่สีกลับด้านจะสแกนไม่ติดกับเครื่องอ่านบางรุ่น
+ * พื้นหลังกล่องเป็นสีขาวคงที่ ไม่เปลี่ยนตาม theme ของเว็บ (business invariant ข้อ 5)
  */
-export function QrPreview({ matrix, error, description }: QrPreviewProps) {
+export function QrPreview({
+  src,
+  error,
+  warning,
+  description,
+}: QrPreviewProps) {
   if (error !== null) {
     return (
       <div
@@ -31,7 +34,7 @@ export function QrPreview({ matrix, error, description }: QrPreviewProps) {
     );
   }
 
-  if (matrix === null) {
+  if (src === null) {
     return (
       <div className="grid aspect-square w-full place-items-center rounded-lg border border-dashed bg-muted/30 p-6 text-center">
         <div className="space-y-3 text-muted-foreground">
@@ -43,23 +46,17 @@ export function QrPreview({ matrix, error, description }: QrPreviewProps) {
   }
 
   return (
-    <div className="rounded-lg bg-qr-paper p-4 shadow-sm ring-1 ring-black/5">
-      <svg
-        role="img"
-        aria-label={description}
-        viewBox={`0 0 ${matrix.size} ${matrix.size}`}
-        shapeRendering="crispEdges"
-        className="h-auto w-full"
-      >
-        {/*
-          ใส่สีเป็น attribute ตรง ๆ ไม่ใช้ utility class
-          เพราะ (1) invariant ข้อ 5 บอกว่าสีนี้ห้ามเปลี่ยนตาม theme อยู่แล้ว
-          และ (2) ถ้าใช้ class แล้วผู้ใช้ copy/save SVG ออกไป สีจะหายกลายเป็นดำทั้งแผ่น
-          ค่าตรงนี้ต้องตรงกับ renderSvg() ที่ใช้ตอนดาวน์โหลด
-        */}
-        <rect width={matrix.size} height={matrix.size} fill="#ffffff" />
-        <path d={renderMatrixPath(matrix)} fill="#000000" />
-      </svg>
+    <div className="space-y-3">
+      <div className="rounded-lg bg-qr-paper p-4 shadow-sm ring-1 ring-black/5">
+        {/* biome-ignore lint/performance/noImgElement: ภาพสร้างจาก data URI ฝั่ง client ไม่ผ่าน image optimizer */}
+        <img src={src} alt={description} className="h-auto w-full" />
+      </div>
+
+      {warning !== null && (
+        <output className="block rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-warning-foreground">
+          {warning}
+        </output>
+      )}
     </div>
   );
 }

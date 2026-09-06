@@ -1,3 +1,4 @@
+import { buildPromptPayPayload } from "./promptpay";
 import type { QrData, WifiEncryption } from "./types";
 
 /**
@@ -113,11 +114,11 @@ function buildVCard(data: Extract<QrData, { type: "vcard" }>): string {
 
 export function buildPayload(data: QrData): string {
   switch (data.type) {
+    case "promptpay":
+      return buildPromptPayPayload(data);
+
     case "url":
       return normalizeUrl(data.url);
-
-    case "text":
-      return data.text;
 
     case "wifi": {
       const parts = [`T:${data.encryption}`, `S:${escapeWifi(data.ssid)}`];
@@ -128,29 +129,13 @@ export function buildPayload(data: QrData): string {
       return `WIFI:${parts.join(";")};;`;
     }
 
-    case "vcard":
-      return buildVCard(data);
-
-    case "tel":
-      return `tel:${normalizePhone(data.phone)}`;
-
-    case "sms":
-      return `SMSTO:${normalizePhone(data.phone)}:${data.message}`;
-
-    case "email": {
-      const params = new URLSearchParams();
-      if (data.subject) params.set("subject", data.subject);
-      if (data.body) params.set("body", data.body);
-      const query = params.toString();
-      return query
-        ? `mailto:${data.to.trim()}?${query}`
-        : `mailto:${data.to.trim()}`;
-    }
-
     case "line": {
       const id = normalizeLineId(data.officialAccountId);
       return id === "" ? "" : `${LINE_OA_PREFIX}${encodeURIComponent(id)}`;
     }
+
+    case "vcard":
+      return buildVCard(data);
   }
 }
 
@@ -254,45 +239,18 @@ function parseVCard(payload: string): QrData {
   return result;
 }
 
-function parseEmail(payload: string): QrData {
-  const rest = payload.slice("mailto:".length);
-  const queryIndex = rest.indexOf("?");
-  const to = queryIndex === -1 ? rest : rest.slice(0, queryIndex);
-  const params = new URLSearchParams(
-    queryIndex === -1 ? "" : rest.slice(queryIndex + 1),
-  );
-  return {
-    type: "email",
-    to,
-    subject: params.get("subject") ?? "",
-    body: params.get("body") ?? "",
-  };
-}
-
-function parseSms(payload: string): QrData {
-  const rest = payload.slice("SMSTO:".length);
-  const separatorIndex = rest.indexOf(":");
-  return separatorIndex === -1
-    ? { type: "sms", phone: rest, message: "" }
-    : {
-        type: "sms",
-        phone: rest.slice(0, separatorIndex),
-        message: rest.slice(separatorIndex + 1),
-      };
-}
-
 /**
  * แปลง payload กลับเป็นข้อมูลที่ผู้ใช้กรอก
+ *
  * ใช้ใน round-trip test เป็นหลัก — ถ้าแปลงกลับไม่ตรง แปลว่า escape ผิด
+ * คืน null เมื่อเป็น payload ที่เราไม่ได้สร้าง (เช่น QR ของเว็บอื่น)
+ *
+ * หมายเหตุ: ไม่รองรับพร้อมเพย์ เพราะความถูกต้องของพร้อมเพย์พิสูจน์ด้วย
+ * golden vector ใน promptpay.test.ts ซึ่งแข็งแรงกว่า round-trip
  */
-export function parsePayload(payload: string): QrData {
+export function parsePayload(payload: string): QrData | null {
   if (payload.startsWith("WIFI:")) return parseWifi(payload);
   if (payload.startsWith("BEGIN:VCARD")) return parseVCard(payload);
-  if (payload.startsWith("SMSTO:")) return parseSms(payload);
-  if (payload.startsWith("mailto:")) return parseEmail(payload);
-  if (payload.startsWith("tel:")) {
-    return { type: "tel", phone: payload.slice("tel:".length) };
-  }
   if (payload.startsWith(LINE_OA_PREFIX)) {
     return {
       type: "line",
@@ -304,5 +262,5 @@ export function parsePayload(payload: string): QrData {
   if (/^[a-z][a-z0-9+.-]*:\/\//i.test(payload)) {
     return { type: "url", url: payload };
   }
-  return { type: "text", text: payload };
+  return null;
 }

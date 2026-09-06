@@ -1,8 +1,27 @@
 "use client";
 
 import { useId } from "react";
-import { Input, Label, Select, Textarea } from "@/components/ui/input";
+import { Input, Label, Select } from "@/components/ui/input";
+import {
+  PROMPTPAY_TARGET_LABELS,
+  PROMPTPAY_TARGET_TYPES,
+  type PromptPayTargetType,
+} from "@/lib/qr/promptpay";
 import type { QrData } from "@/lib/qr/types";
+
+const PROMPTPAY_TARGET_PLACEHOLDERS: Record<PromptPayTargetType, string> = {
+  mobile: "081-234-5678",
+  nationalId: "1-2345-67890-12-3",
+  taxId: "0-1234-56789-01-2",
+  ewallet: "012345678901234",
+};
+
+const PROMPTPAY_TARGET_HINTS: Record<PromptPayTargetType, string> = {
+  mobile: "ต้องเป็นเบอร์ที่ผูกพร้อมเพย์ไว้กับบัญชีธนาคารแล้ว",
+  nationalId: "ต้องเป็นเลขบัตรที่ผูกพร้อมเพย์ไว้แล้ว",
+  taxId: "สำหรับร้านค้าและนิติบุคคลที่ลงทะเบียนพร้อมเพย์",
+  ewallet: "รหัส 15 หลักของ e-Wallet ที่รองรับพร้อมเพย์",
+};
 
 type FieldProps = {
   label: string;
@@ -12,16 +31,13 @@ type FieldProps = {
 
 function Field({ label, hint, children }: FieldProps) {
   const id = useId();
-  const hintId = `${id}-hint`;
 
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
       {children(id)}
       {hint !== undefined && (
-        <p id={hintId} className="text-sm text-muted-foreground">
-          {hint}
-        </p>
+        <p className="text-sm text-muted-foreground">{hint}</p>
       )}
     </div>
   );
@@ -34,6 +50,71 @@ export type QrFieldsProps = {
 
 export function QrFields({ data, onChange }: QrFieldsProps) {
   switch (data.type) {
+    case "promptpay":
+      return (
+        <div className="space-y-4">
+          <Field label="รับเงินเข้าอะไร">
+            {(id) => (
+              <Select
+                id={id}
+                value={data.targetType}
+                onChange={(event) =>
+                  onChange({
+                    ...data,
+                    targetType: event.target.value as typeof data.targetType,
+                    target: "",
+                  })
+                }
+              >
+                {PROMPTPAY_TARGET_TYPES.map((option) => (
+                  <option key={option} value={option}>
+                    {PROMPTPAY_TARGET_LABELS[option]}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+
+          <Field
+            label={PROMPTPAY_TARGET_LABELS[data.targetType]}
+            hint={PROMPTPAY_TARGET_HINTS[data.targetType]}
+          >
+            {(id) => (
+              <Input
+                id={id}
+                inputMode="numeric"
+                autoComplete="off"
+                placeholder={PROMPTPAY_TARGET_PLACEHOLDERS[data.targetType]}
+                value={data.target}
+                onChange={(event) =>
+                  onChange({ ...data, target: event.target.value })
+                }
+              />
+            )}
+          </Field>
+
+          <Field
+            label="จำนวนเงิน (บาท)"
+            hint="เว้นว่างไว้ถ้าต้องการให้ผู้จ่ายกรอกจำนวนเงินเอง"
+          >
+            {(id) => (
+              <Input
+                id={id}
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                placeholder="ไม่ระบุ"
+                value={data.amount}
+                onChange={(event) =>
+                  onChange({ ...data, amount: event.target.value })
+                }
+              />
+            )}
+          </Field>
+        </div>
+      );
+
     case "url":
       return (
         <Field label="ลิงก์เว็บไซต์" hint="ไม่ต้องพิมพ์ https:// ก็ได้">
@@ -46,22 +127,6 @@ export function QrFields({ data, onChange }: QrFieldsProps) {
               value={data.url}
               onChange={(event) =>
                 onChange({ ...data, url: event.target.value })
-              }
-            />
-          )}
-        </Field>
-      );
-
-    case "text":
-      return (
-        <Field label="ข้อความ" hint="ข้อความยาวจะทำให้ QR ซับซ้อนและสแกนยากขึ้น">
-          {(id) => (
-            <Textarea
-              id={id}
-              placeholder="ข้อความที่ต้องการให้แสดงเมื่อสแกน"
-              value={data.text}
-              onChange={(event) =>
-                onChange({ ...data, text: event.target.value })
               }
             />
           )}
@@ -129,6 +194,25 @@ export function QrFields({ data, onChange }: QrFieldsProps) {
             เครือข่ายนี้ซ่อนชื่อไว้
           </label>
         </div>
+      );
+
+    case "line":
+      return (
+        <Field
+          label="LINE Official Account ID"
+          hint="ใส่ ID ที่ขึ้นต้นด้วย @ เช่น @examplecafe (ดูได้ในหน้าตั้งค่า LINE OA)"
+        >
+          {(id) => (
+            <Input
+              id={id}
+              placeholder="@examplecafe"
+              value={data.officialAccountId}
+              onChange={(event) =>
+                onChange({ ...data, officialAccountId: event.target.value })
+              }
+            />
+          )}
+        </Field>
       );
 
     case "vcard":
@@ -226,116 +310,6 @@ export function QrFields({ data, onChange }: QrFieldsProps) {
             )}
           </Field>
         </div>
-      );
-
-    case "tel":
-      return (
-        <Field label="เบอร์โทร" hint="สแกนแล้วจะขึ้นหน้าโทรออกพร้อมเบอร์นี้">
-          {(id) => (
-            <Input
-              id={id}
-              type="tel"
-              inputMode="tel"
-              placeholder="081-234-5678"
-              value={data.phone}
-              onChange={(event) =>
-                onChange({ ...data, phone: event.target.value })
-              }
-            />
-          )}
-        </Field>
-      );
-
-    case "sms":
-      return (
-        <div className="space-y-4">
-          <Field label="เบอร์ปลายทาง">
-            {(id) => (
-              <Input
-                id={id}
-                type="tel"
-                inputMode="tel"
-                placeholder="081-234-5678"
-                value={data.phone}
-                onChange={(event) =>
-                  onChange({ ...data, phone: event.target.value })
-                }
-              />
-            )}
-          </Field>
-          <Field label="ข้อความตั้งต้น" hint="ผู้สแกนแก้ข้อความได้ก่อนส่ง">
-            {(id) => (
-              <Textarea
-                id={id}
-                value={data.message}
-                onChange={(event) =>
-                  onChange({ ...data, message: event.target.value })
-                }
-              />
-            )}
-          </Field>
-        </div>
-      );
-
-    case "email":
-      return (
-        <div className="space-y-4">
-          <Field label="อีเมลปลายทาง">
-            {(id) => (
-              <Input
-                id={id}
-                type="email"
-                inputMode="email"
-                placeholder="hello@example.com"
-                value={data.to}
-                onChange={(event) =>
-                  onChange({ ...data, to: event.target.value })
-                }
-              />
-            )}
-          </Field>
-          <Field label="หัวข้อ">
-            {(id) => (
-              <Input
-                id={id}
-                value={data.subject}
-                onChange={(event) =>
-                  onChange({ ...data, subject: event.target.value })
-                }
-              />
-            )}
-          </Field>
-          <Field label="เนื้อหาตั้งต้น">
-            {(id) => (
-              <Textarea
-                id={id}
-                value={data.body}
-                onChange={(event) =>
-                  onChange({ ...data, body: event.target.value })
-                }
-              />
-            )}
-          </Field>
-        </div>
-      );
-
-    case "line":
-      return (
-        <Field
-          label="LINE Official Account ID"
-          hint="ใส่ ID ที่ขึ้นต้นด้วย @ เช่น @examplecafe (ดูได้ในหน้าตั้งค่า LINE OA)"
-        >
-          {(id) => (
-            <Input
-              id={id}
-              placeholder="@examplecafe"
-              value={data.officialAccountId}
-              onChange={(event) =>
-                onChange({ ...data, officialAccountId: event.target.value })
-              }
-            />
-          )}
-        </Field>
       );
   }
 }

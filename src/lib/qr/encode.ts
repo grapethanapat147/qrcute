@@ -64,6 +64,7 @@ export class QrEncodeError extends Error {
 export function encodeQr(
   payload: string,
   level: ErrorCorrectionLevel = "M",
+  margin: number = QUIET_ZONE_MODULES,
 ): QrMatrix {
   if (payload === "") {
     throw new QrEncodeError("payload ว่าง");
@@ -72,7 +73,7 @@ export function encodeQr(
   try {
     const result = encode(payload, {
       ecc: level,
-      border: QUIET_ZONE_MODULES,
+      border: Math.max(QUIET_ZONE_MODULES, Math.round(margin)),
     });
     return {
       data: result.data,

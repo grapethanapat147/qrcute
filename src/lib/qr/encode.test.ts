@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { encodeQr, QrEncodeError, QUIET_ZONE_MODULES } from "./encode";
-import { computePngLayout } from "./render-png";
-import { renderMatrixPath, renderSvg } from "./render-svg";
+import { snapSizeToModules, svgToDataUri } from "./render-png";
+import { dataModulesPath, renderSvg } from "./render-svg";
+import { DEFAULT_QR_STYLE, type QrStyle } from "./style";
 
 describe("encodeQr", () => {
   it("คืน matrix สี่เหลี่ยมจัตุรัสที่รวม quiet zone แล้ว", () => {
@@ -24,6 +25,16 @@ describe("encodeQr", () => {
     expect(matrix.data[0]?.[last]).toBe(false);
     expect(matrix.data[last]?.[0]).toBe(false);
     expect(matrix.data[last]?.[last]).toBe(false);
+  });
+
+  it("margin ที่มากขึ้นทำให้ matrix ใหญ่ขึ้นตามจำนวนที่เพิ่ม", () => {
+    const base = encodeQr("test", "M", 4);
+    const wide = encodeQr("test", "M", 8);
+    expect(wide.size).toBe(base.size + 8);
+  });
+
+  it("ไม่ยอมให้ margin ต่ำกว่าขั้นต่ำตามสเปก", () => {
+    expect(encodeQr("test", "M", 0).size).toBe(encodeQr("test", "M", 4).size);
   });
 
   it("error correction สูงขึ้นทำให้ QR ใหญ่ขึ้นหรือเท่าเดิม", () => {
@@ -57,7 +68,13 @@ describe("renderSvg", () => {
     expect(svg.endsWith("</svg>")).toBe(true);
   });
 
-  it("รวม module ที่ติดกันในแนวนอนเป็นสี่เหลี่ยมเดียว", () => {
+  it("ใช้สีดำ/ขาวล้วนเป็นค่าเริ่มต้น", () => {
+    const svg = renderSvg(encodeQr("test", "M"));
+    expect(svg).toContain('fill="#000000"');
+    expect(svg).toContain('fill="#ffffff"');
+  });
+
+  it("รวม module ที่ติดกันในแนวนอนเมื่อจุดเป็นสี่เหลี่ยม", () => {
     const matrix = {
       size: 4,
       version: 1,
@@ -69,37 +86,58 @@ describe("renderSvg", () => {
       ],
     };
 
-    // แถวแรก 3 ช่องติดกัน ต้องได้ path เดียวยาว 3 ไม่ใช่ 3 path
-    expect(renderMatrixPath(matrix)).toBe(
-      "M0 0h3v1h-3zM1 1h1v1h-1zM0 3h1v1h-1zM3 3h1v1h-1z",
-    );
+    // margin 4 กับ matrix ขนาด 4 แปลว่าไม่มี module ไหนอยู่ในกรอบตามุม
+    const path = dataModulesPath(matrix, "square", []);
+    expect(path).toBe("M0 0h3v1h-3zM1 1h1v1h-1zM0 3h1v1h-1zM3 3h1v1h-1z");
   });
 
-  it("ใช้สีดำ/ขาวล้วนเป็นค่าเริ่มต้น", () => {
-    const svg = renderSvg(encodeQr("test", "M"));
-    expect(svg).toContain('fill="#000000"');
-    expect(svg).toContain('fill="#ffffff"');
+  it("แต่ละรูปทรงจุดสร้าง path ที่ต่างกันจริง", () => {
+    const matrix = encodeQr("https://example.com", "M");
+    const paths = (["square", "rounded", "dot"] as const).map((shape) =>
+      renderSvg(matrix, { style: { ...DEFAULT_QR_STYLE, dotShape: shape } }),
+    );
+    expect(new Set(paths).size).toBe(3);
+  });
+
+  it("ใส่ gradient defs เฉพาะเมื่อเลือกไล่เฉดสี", () => {
+    const matrix = encodeQr("test", "M");
+    expect(renderSvg(matrix)).not.toContain("<defs>");
+
+    const gradient: QrStyle = {
+      ...DEFAULT_QR_STYLE,
+      gradientDirection: "diagonal",
+      inkSecondary: "#123456",
+    };
+    const svg = renderSvg(matrix, { style: gradient });
+    expect(svg).toContain("<linearGradient");
+    expect(svg).toContain('stop-color="#123456"');
+    expect(svg).toContain("url(#qr-gradient)");
+  });
+
+  it("รองรับ radial gradient", () => {
+    const svg = renderSvg(encodeQr("test", "M"), {
+      style: { ...DEFAULT_QR_STYLE, gradientDirection: "radial" },
+    });
+    expect(svg).toContain("<radialGradient");
   });
 });
 
-describe("computePngLayout", () => {
-  it("ปัดขนาด module ลงเป็นจำนวนเต็มเพื่อไม่ให้ขอบเบลอ", () => {
-    // 29 module ใน 512px = 17.65 → ต้องได้ 17
-    const layout = computePngLayout(29, 512);
-    expect(layout.modulePixels).toBe(17);
-    expect(Number.isInteger(layout.modulePixels)).toBe(true);
+describe("render-png helpers", () => {
+  it("ปัดขนาดภาพให้หารด้วยจำนวน module ลงตัว", () => {
+    // 29 module ใน 512px → 17px ต่อ module → 493px
+    expect(snapSizeToModules(29, 512)).toBe(493);
+    expect(snapSizeToModules(29, 512) % 29).toBe(0);
   });
 
-  it("จัดกึ่งกลางส่วนที่เหลือจากการปัดลง", () => {
-    const layout = computePngLayout(29, 512);
-    // 29 × 17 = 493 เหลือ 19px แบ่งสองข้าง = 9
-    expect(layout.offset).toBe(9);
-    expect(layout.offset * 2 + 29 * layout.modulePixels).toBeLessThanOrEqual(
-      512,
+  it("ไม่คืนขนาด 0 แม้ภาพเป้าหมายจะเล็กกว่า matrix", () => {
+    expect(snapSizeToModules(100, 50)).toBe(100);
+  });
+
+  it("แปลง SVG เป็น data URI ที่ใช้เป็น src ได้", () => {
+    const uri = svgToDataUri("<svg><rect/></svg>");
+    expect(uri.startsWith("data:image/svg+xml;charset=utf-8,")).toBe(true);
+    expect(decodeURIComponent(uri.split(",")[1] ?? "")).toBe(
+      "<svg><rect/></svg>",
     );
-  });
-
-  it("ไม่คืนขนาด module เป็น 0 แม้ภาพเป้าหมายจะเล็กกว่า matrix", () => {
-    expect(computePngLayout(100, 50).modulePixels).toBe(1);
   });
 });

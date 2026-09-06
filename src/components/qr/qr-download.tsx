@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import type { QrMatrix } from "@/lib/qr/encode";
 import { PNG_SIZES, renderPngBlob } from "@/lib/qr/render-png";
 import { renderSvg } from "@/lib/qr/render-svg";
+import type { QrStyle } from "@/lib/qr/style";
 
 function triggerDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
@@ -20,11 +21,12 @@ function triggerDownload(blob: Blob, filename: string): void {
 
 export type QrDownloadProps = {
   matrix: QrMatrix | null;
+  style: QrStyle;
   /** ใช้ตั้งชื่อไฟล์ เช่น qr-wifi */
   filenameBase: string;
 };
 
-export function QrDownload({ matrix, filenameBase }: QrDownloadProps) {
+export function QrDownload({ matrix, style, filenameBase }: QrDownloadProps) {
   const [busySize, setBusySize] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const disabled = matrix === null;
@@ -34,7 +36,7 @@ export function QrDownload({ matrix, filenameBase }: QrDownloadProps) {
     setBusySize(size);
     setError(null);
     try {
-      const blob = await renderPngBlob(matrix, { size });
+      const blob = await renderPngBlob(matrix, { size, style });
       triggerDownload(blob, `${filenameBase}-${size}.png`);
     } catch {
       setError("ดาวน์โหลด PNG ไม่สำเร็จ ลองใหม่อีกครั้ง");
@@ -46,7 +48,7 @@ export function QrDownload({ matrix, filenameBase }: QrDownloadProps) {
   function downloadSvg() {
     if (matrix === null) return;
     setError(null);
-    const blob = new Blob([renderSvg(matrix)], {
+    const blob = new Blob([renderSvg(matrix, { style })], {
       type: "image/svg+xml;charset=utf-8",
     });
     triggerDownload(blob, `${filenameBase}.svg`);

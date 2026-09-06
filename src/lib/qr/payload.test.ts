@@ -9,12 +9,12 @@ import {
 import type { QrData } from "./types";
 
 /**
- * ค่าตัวอย่างของทุกประเภท ใช้ค่าที่ normalize แล้ว
+ * ค่าตัวอย่างของทุกประเภทที่ parse กลับได้ ใช้ค่าที่ normalize แล้ว
  * เพื่อให้ build → parse ได้ค่าเดิมเป๊ะ (การ normalize ทดสอบแยกด้านล่าง)
+ * พร้อมเพย์ไม่อยู่ในชุดนี้ — พิสูจน์ด้วย golden vector ใน promptpay.test.ts แทน
  */
 const ROUND_TRIP_CASES: QrData[] = [
   { type: "url", url: "https://example.com/path?a=1" },
-  { type: "text", text: "สแกนเพื่อดูเมนูอาหาร 🍜" },
   {
     type: "wifi",
     ssid: "ร้านกาแฟ WiFi",
@@ -22,6 +22,7 @@ const ROUND_TRIP_CASES: QrData[] = [
     encryption: "WPA",
     hidden: false,
   },
+  { type: "line", officialAccountId: "@examplecafe" },
   {
     type: "vcard",
     firstName: "ธนาพัฒน์",
@@ -32,15 +33,6 @@ const ROUND_TRIP_CASES: QrData[] = [
     email: "owner@example.com",
     website: "https://example.com",
   },
-  { type: "tel", phone: "0812345678" },
-  { type: "sms", phone: "0812345678", message: "สั่งอาหารครับ" },
-  {
-    type: "email",
-    to: "hello@example.com",
-    subject: "สอบถามเมนู",
-    body: "สวัสดีครับ อยากทราบว่า...",
-  },
-  { type: "line", officialAccountId: "@examplecafe" },
 ];
 
 describe("buildPayload / parsePayload — round trip", () => {
@@ -49,6 +41,11 @@ describe("buildPayload / parsePayload — round trip", () => {
       expect(parsePayload(buildPayload(data))).toEqual(data);
     });
   }
+
+  it("คืน null เมื่อเจอ payload ที่เราไม่ได้สร้าง", () => {
+    expect(parsePayload("ข้อความอะไรก็ไม่รู้")).toBeNull();
+    expect(parsePayload("")).toBeNull();
+  });
 });
 
 describe("WiFi", () => {
@@ -131,17 +128,6 @@ describe("vCard", () => {
   });
 });
 
-describe("SMS", () => {
-  it("ข้อความที่มีเครื่องหมาย : ไม่ทำให้แยกเบอร์ผิด", () => {
-    const data: QrData = {
-      type: "sms",
-      phone: "0812345678",
-      message: "เวลาเปิด 09:00-18:00",
-    };
-    expect(parsePayload(buildPayload(data))).toEqual(data);
-  });
-});
-
 describe("normalize", () => {
   it("เติม https:// ให้ URL ที่ไม่มี scheme", () => {
     expect(normalizeUrl("example.com")).toBe("https://example.com");
@@ -159,17 +145,5 @@ describe("normalize", () => {
     expect(
       buildPayload({ type: "line", officialAccountId: "examplecafe" }),
     ).toBe("https://line.me/R/ti/p/%40examplecafe");
-  });
-});
-
-describe("ข้อจำกัดที่รู้อยู่", () => {
-  it("ข้อความที่หน้าตาเหมือน URL จะถูกอ่านกลับเป็นประเภท url", () => {
-    // เป็นความกำกวมของตัว payload เอง ไม่ใช่บั๊ก — payload ของ url กับ text
-    // หน้าตาเหมือนกันทุกประการ ตัวสแกนก็แยกไม่ออกเช่นกัน
-    const payload = buildPayload({
-      type: "text",
-      text: "https://example.com",
-    });
-    expect(parsePayload(payload).type).toBe("url");
   });
 });
