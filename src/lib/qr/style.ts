@@ -1,3 +1,4 @@
+import { DEFAULT_FRAME, type QrFrame } from "./frame";
 import type { QrLogo } from "./logo";
 
 /**
@@ -92,6 +93,8 @@ export type QrStyle = {
    * ผู้ใช้ที่เปิดลิงก์ที่แชร์มาจะได้ทุกอย่างยกเว้นโลโก้
    */
   logo: QrLogo | null;
+  /** กรอบและข้อความชวนสแกน */
+  frame: QrFrame;
 };
 
 export const DEFAULT_QR_STYLE: QrStyle = {
@@ -105,6 +108,7 @@ export const DEFAULT_QR_STYLE: QrStyle = {
   eyeColor: null,
   margin: MIN_MARGIN,
   logo: null,
+  frame: DEFAULT_FRAME,
 };
 
 export const DOT_SHAPE_LABELS: Record<DotShape, string> = {

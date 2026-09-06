@@ -16,6 +16,7 @@ import {
   type QrStyle,
 } from "@/lib/qr/style";
 import { cn } from "@/lib/utils";
+import { QrFrameField } from "./qr-frame-field";
 import { QrLogoField } from "./qr-logo-field";
 
 type ColorFieldProps = {
@@ -218,6 +219,11 @@ export function QrStyleControls({
           </Select>
         </div>
       </div>
+
+      <QrFrameField
+        frame={style.frame}
+        onChange={(frame) => onChange({ ...style, frame })}
+      />
 
       <QrLogoField
         logo={style.logo}

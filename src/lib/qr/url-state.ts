@@ -1,4 +1,5 @@
 import { ERROR_CORRECTION_LEVELS, type ErrorCorrectionLevel } from "./encode";
+import { DEFAULT_FRAME, FRAME_KINDS } from "./frame";
 import { PROMPTPAY_TARGET_TYPES, type PromptPayTargetType } from "./promptpay";
 import {
   DEFAULT_QR_STYLE,
@@ -154,6 +155,17 @@ export function qrStyleToSearchParams(
   if (style.margin !== DEFAULT_QR_STYLE.margin) {
     params.set("m", String(style.margin));
   }
+  if (style.frame.kind !== DEFAULT_FRAME.kind) {
+    params.set("fk", style.frame.kind);
+    if (style.frame.text !== DEFAULT_FRAME.text)
+      params.set("ft", style.frame.text);
+    if (style.frame.textColor !== DEFAULT_FRAME.textColor) {
+      params.set("ftc", stripHash(style.frame.textColor));
+    }
+    if (style.frame.background !== DEFAULT_FRAME.background) {
+      params.set("fbg", stripHash(style.frame.background));
+    }
+  }
 }
 
 function pickFrom<T extends string>(
@@ -200,6 +212,12 @@ export function qrStyleFromSearchParams(params: URLSearchParams): QrStyle {
     margin: params.get("m") === null ? DEFAULT_QR_STYLE.margin : margin,
     // โลโก้ไม่อยู่ใน URL — data URI ยาวเกินกว่าจะแชร์ผ่านลิงก์ได้
     logo: null,
+    frame: {
+      kind: pickFrom(FRAME_KINDS, params.get("fk"), DEFAULT_FRAME.kind),
+      text: params.get("ft") ?? DEFAULT_FRAME.text,
+      textColor: readColor(params.get("ftc"), DEFAULT_FRAME.textColor),
+      background: readColor(params.get("fbg"), DEFAULT_FRAME.background),
+    },
   };
 }
 

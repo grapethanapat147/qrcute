@@ -1,4 +1,4 @@
-import { ERROR_CORRECTION_INFO, type ErrorCorrectionLevel } from "./encode";
+import type { ErrorCorrectionLevel } from "./encode";
 
 /**
  * โลโก้ตรงกลาง QR

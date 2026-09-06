@@ -1,5 +1,7 @@
 import type { QrMatrix } from "./encode";
+import { frameLayout } from "./frame";
 import {
+  formatNumber,
   type PathCommand,
   type Radii,
   roundedRect,
@@ -248,18 +250,25 @@ function gradientDefs(style: QrStyle, id: string): string {
 // ---------------------------------------------------------------------------
 
 export type SvgRenderOptions = {
-  /** ขนาดภาพเป็น px ถ้าไม่ระบุจะไม่ใส่ width/height ให้ยืดตาม container */
+  /** ความกว้างของภาพเป็น px ถ้าไม่ระบุจะไม่ใส่ width/height ให้ยืดตาม container */
   size?: number;
   style?: QrStyle;
   /** prefix ของ id ใน SVG — เปลี่ยนเมื่อมี QR หลายอันในหน้าเดียว */
   idPrefix?: string;
+  /** ภาพแถบข้อความที่ผ่านการวาดด้วย canvas มาแล้ว */
+  bandImageSrc?: string | null;
 };
 
 export function renderSvg(
   matrix: QrMatrix,
   options: SvgRenderOptions = {},
 ): string {
-  const { size, style = DEFAULT_QR_STYLE, idPrefix = "qr" } = options;
+  const {
+    size,
+    style = DEFAULT_QR_STYLE,
+    idPrefix = "qr",
+    bandImageSrc = null,
+  } = options;
 
   const paths = qrPaths(matrix, style);
   const gradientId = `${idPrefix}-gradient`;
@@ -267,8 +276,13 @@ export function renderSvg(
     style.gradientDirection === "none" ? style.ink : `url(#${gradientId})`;
   const eyeFill = style.eyeColor ?? inkFill;
 
+  const frame = frameLayout(matrix.size, style.frame);
+  const hasBand = frame.band !== null && bandImageSrc !== null;
+
   const dimensions =
-    size === undefined ? "" : ` width="${size}" height="${size}"`;
+    size === undefined
+      ? ""
+      : ` width="${size}" height="${formatNumber((size * frame.height) / frame.width)}"`;
 
   const layout = logoLayout(matrix, style);
   const logoMarkup =
@@ -293,15 +307,37 @@ export function renderSvg(
           `<image href="${style.logo.src}" x="${layout.x}" y="${layout.y}" width="${layout.side}" height="${layout.side}" preserveAspectRatio="xMidYMid meet"/>`,
         ].join("");
 
+  // พื้นหลังของกรอบ วาดเฉพาะแบบที่มีขอบสีล้อมรอบ
+  const frameBackground =
+    style.frame.kind === "outline" && frame.band !== null
+      ? `<path fill="${style.frame.background}" d="${toSvgPathData(
+          roundedRect(0, 0, frame.width, frame.height, [
+            frame.radius,
+            frame.radius,
+            frame.radius,
+            frame.radius,
+          ]),
+        )}"/>`
+      : "";
+
+  const bandMarkup =
+    hasBand && frame.band !== null
+      ? `<image href="${bandImageSrc}" x="${frame.band.x}" y="${frame.band.y}" width="${frame.band.width}" height="${frame.band.height}" preserveAspectRatio="none"/>`
+      : "";
+
   return [
     `<svg xmlns="http://www.w3.org/2000/svg"${dimensions}`,
-    ` viewBox="0 0 ${matrix.size} ${matrix.size}" shape-rendering="geometricPrecision">`,
+    ` viewBox="0 0 ${formatNumber(frame.width)} ${formatNumber(frame.height)}" shape-rendering="geometricPrecision">`,
     gradientDefs(style, gradientId),
+    frameBackground,
+    `<g transform="translate(${formatNumber(frame.qrX)} ${formatNumber(frame.qrY)})">`,
     `<rect width="${matrix.size}" height="${matrix.size}" fill="${style.paper}"/>`,
     `<path fill="${inkFill}" d="${toSvgPathData(paths.data)}"/>`,
     `<path fill="${eyeFill}" fill-rule="evenodd" d="${toSvgPathData(paths.eyeFrames)}"/>`,
     `<path fill="${eyeFill}" d="${toSvgPathData(paths.eyeBalls)}"/>`,
     logoMarkup,
+    "</g>",
+    bandMarkup,
     "</svg>",
   ].join("");
 }

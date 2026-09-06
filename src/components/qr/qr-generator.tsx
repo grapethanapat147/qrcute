@@ -39,12 +39,10 @@ import { QrDownload } from "./qr-download";
 import { QrFields } from "./qr-fields";
 import { QrPreview } from "./qr-preview";
 import { QrStyleControls } from "./qr-style-controls";
+import { useCtaBand } from "./use-cta-band";
 import { useDebouncedValue } from "./use-debounced-value";
 
-type EncodeResult =
-  | { matrix: QrMatrix; svg: string }
-  | { error: string }
-  | null;
+type EncodeResult = { matrix: QrMatrix } | { error: string } | null;
 
 type PanelId = "data" | "design";
 
@@ -69,7 +67,7 @@ function buildPreview(
 
   try {
     const matrix = encodeQr(buildPayload(data), level, style.margin);
-    return { matrix, svg: renderSvg(matrix, { style }) };
+    return { matrix };
   } catch (cause) {
     return {
       error:
@@ -130,7 +128,14 @@ export function QrGenerator() {
   }, [debouncedData, debouncedLevel, debouncedStyle]);
 
   const matrix = result !== null && "matrix" in result ? result.matrix : null;
-  const svg = result !== null && "svg" in result ? result.svg : null;
+  const band = useCtaBand(matrix?.size ?? null, effectiveStyle);
+  const svg =
+    matrix === null
+      ? null
+      : renderSvg(matrix, {
+          style: effectiveStyle,
+          bandImageSrc: band?.dataUrl ?? null,
+        });
   const error = result !== null && "error" in result ? result.error : null;
 
   return (
@@ -270,6 +275,7 @@ export function QrGenerator() {
         <QrDownload
           matrix={matrix}
           style={effectiveStyle}
+          band={band}
           filenameBase={`qr-${data.type}`}
         />
       </div>

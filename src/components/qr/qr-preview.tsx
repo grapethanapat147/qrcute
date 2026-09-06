@@ -49,7 +49,7 @@ export function QrPreview({
     <div className="space-y-3">
       <div className="rounded-lg bg-qr-paper p-4 shadow-sm ring-1 ring-black/5">
         {/* biome-ignore lint/performance/noImgElement: ภาพสร้างจาก data URI ฝั่ง client ไม่ผ่าน image optimizer */}
-        <img src={src} alt={description} className="h-auto w-full" />
+        <img src={src} alt={description} className="mx-auto h-auto w-full" />
       </div>
 
       {warning !== null && (

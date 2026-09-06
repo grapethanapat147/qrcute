@@ -1,5 +1,7 @@
 import type { QrMatrix } from "./encode";
+import { frameLayout } from "./frame";
 import { renderSvg, type SvgRenderOptions } from "./render-svg";
+import { DEFAULT_QR_STYLE } from "./style";
 
 export const PNG_SIZES = [512, 1024, 2048] as const;
 export type PngSize = (typeof PNG_SIZES)[number];
@@ -10,17 +12,17 @@ export function svgToDataUri(svg: string): string {
 }
 
 /**
- * ปัดขนาดภาพให้หารด้วยจำนวน module ลงตัว
+ * ปัดความกว้างให้หารด้วยจำนวน module ลงตัว
  *
  * ถ้าขอบ module ตกคร่อม pixel ภาพจะเบลอ ซึ่งเป็นสาเหตุอันดับต้น ๆ
  * ที่ QR พิมพ์ออกมาแล้วสแกนไม่ติด — ยอมให้ภาพเล็กกว่าที่ขอเล็กน้อยดีกว่า
  */
 export function snapSizeToModules(
-  matrixSize: number,
+  moduleCount: number,
   targetSize: number,
 ): number {
-  const modulePixels = Math.max(1, Math.floor(targetSize / matrixSize));
-  return modulePixels * matrixSize;
+  const modulePixels = Math.max(1, Math.floor(targetSize / moduleCount));
+  return modulePixels * moduleCount;
 }
 
 export type PngRenderOptions = SvgRenderOptions & { size: number };
@@ -29,15 +31,19 @@ export type PngRenderOptions = SvgRenderOptions & { size: number };
  * แปลง matrix เป็น PNG โดย rasterize SVG ตัวเดียวกับที่แสดง preview และที่ดาวน์โหลดเป็น SVG
  *
  * ทำแบบนี้เพื่อไม่ให้มี renderer สองชุดที่ค่อย ๆ เพี้ยนจากกัน — รูปทรงจุด
- * รูปทรงตามุม และ gradient จะออกมาเหมือนกันทุกฟอร์แมตโดยอัตโนมัติ
+ * รูปทรงตามุม gradient โลโก้ และแถบข้อความจะออกมาเหมือนกันทุกฟอร์แมตโดยอัตโนมัติ
  * ใช้ได้เฉพาะฝั่ง browser
  */
 export async function renderPngBlob(
   matrix: QrMatrix,
   options: PngRenderOptions,
 ): Promise<Blob> {
-  const canvasSize = snapSizeToModules(matrix.size, options.size);
-  const svg = renderSvg(matrix, { ...options, size: canvasSize });
+  const style = options.style ?? DEFAULT_QR_STYLE;
+  const frame = frameLayout(matrix.size, style.frame);
+
+  const width = snapSizeToModules(frame.width, options.size);
+  const height = Math.round((width * frame.height) / frame.width);
+  const svg = renderSvg(matrix, { ...options, size: width });
 
   const image = new Image();
   image.decoding = "sync";
@@ -48,14 +54,14 @@ export async function renderPngBlob(
   });
 
   const canvas = document.createElement("canvas");
-  canvas.width = canvasSize;
-  canvas.height = canvasSize;
+  canvas.width = width;
+  canvas.height = height;
 
   const context = canvas.getContext("2d");
   if (context === null) {
     throw new Error("เบราว์เซอร์นี้ไม่รองรับ canvas 2d context");
   }
-  context.drawImage(image, 0, 0, canvasSize, canvasSize);
+  context.drawImage(image, 0, 0, width, height);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {

@@ -10,7 +10,7 @@ import {
   recommendedScanDistanceCm,
 } from "./print";
 import { hexToCmyk, renderPdf } from "./render-pdf";
-import { DEFAULT_QR_STYLE } from "./style";
+import { DEFAULT_QR_STYLE, type QrStyle } from "./style";
 
 const matrix = encodeQr("https://example.com/menu", "M");
 
@@ -140,13 +140,14 @@ describe("เนื้อหาในหน้า", () => {
 
   it("วาง QR ไว้กลางหน้าเมื่อหน้ากว้างกว่า QR", () => {
     const pdf = pdfFor({ pageWidthMm: 105, pageHeightMm: 148, qrSizeMm: 80 });
-    const rect = /([\d.]+) ([\d.]+) ([\d.]+) ([\d.]+) re f/.exec(pdf);
-    expect(rect).not.toBeNull();
+    // การจัดกึ่งกลางอยู่ในเมทริกซ์แปลงพิกัด: scale 0 0 -scale originX originY cm
+    const cm = /([\d.]+) 0 0 (-[\d.]+) ([\d.]+) ([\d.]+) cm/.exec(pdf);
+    expect(cm).not.toBeNull();
 
-    const left = Number(rect?.[1]);
-    const size = Number(rect?.[3]);
-    expect(ptToMm(left)).toBeCloseTo((105 - 80) / 2, 3);
-    expect(ptToMm(size)).toBeCloseTo(80, 3);
+    const scale = Number(cm?.[1]);
+    const originX = Number(cm?.[3]);
+    expect(ptToMm(originX)).toBeCloseTo((105 - 80) / 2, 3);
+    expect(ptToMm(scale * matrix.size)).toBeCloseTo(80, 3);
   });
 });
 
@@ -243,5 +244,77 @@ describe("โลโก้ใน PDF", () => {
       qrSizeMm: 50,
     });
     expect(pdf).not.toContain("/Logo Do");
+  });
+});
+
+describe("กรอบและแถบข้อความใน PDF", () => {
+  const band = { hex: "ffd8ffdb01", widthPx: 1024, heightPx: 160 };
+  const barStyle = {
+    ...DEFAULT_QR_STYLE,
+    frame: { ...DEFAULT_QR_STYLE.frame, kind: "bar" as const },
+  };
+  const outlineStyle = {
+    ...DEFAULT_QR_STYLE,
+    frame: { ...DEFAULT_QR_STYLE.frame, kind: "outline" as const },
+  };
+
+  function pdfWithFrame(style: QrStyle) {
+    return renderPdf(matrix, {
+      style,
+      band,
+      pageWidthMm: 100,
+      pageHeightMm: 100,
+      qrSizeMm: 80,
+    });
+  }
+
+  it("ฝังแถบข้อความเป็น XObject และเรียกใช้", () => {
+    const pdf = pdfWithFrame(barStyle);
+    expect(pdf).toContain("/XObject << /Band 6 0 R >>");
+    expect(pdf).toContain("/Band Do");
+  });
+
+  it("แบบมีกรอบรอบวาดพื้นหลังสีกรอบเพิ่มมาอีกชั้น", () => {
+    const outline = pdfWithFrame(outlineStyle);
+    const bar = pdfWithFrame(barStyle);
+    expect(outline.length).toBeGreaterThan(bar.length);
+  });
+
+  it("ไม่ส่งภาพแถบมาก็ไม่เรียกใช้ ถึงจะเลือกกรอบไว้", () => {
+    const pdf = renderPdf(matrix, {
+      style: barStyle,
+      pageWidthMm: 100,
+      pageHeightMm: 100,
+      qrSizeMm: 80,
+    });
+    expect(pdf).not.toContain("/Band Do");
+    expect(pdf).not.toContain("/XObject");
+  });
+
+  it("มีทั้งโลโก้และแถบ ต้องได้ object แยกกันสองอันและเลขไม่ชนกัน", () => {
+    const pdf = renderPdf(matrix, {
+      style: {
+        ...barStyle,
+        logo: { src: "data:image/png;base64,AAAA", sizeRatio: 0.2 },
+      },
+      logo: { hex: "ffd8ff00", widthPx: 512, heightPx: 512 },
+      band,
+      pageWidthMm: 100,
+      pageHeightMm: 100,
+      qrSizeMm: 80,
+    });
+
+    expect(pdf).toContain("/Logo 6 0 R");
+    expect(pdf).toContain("/Band 7 0 R");
+    expect(pdf).toContain("xref\n0 8");
+    expect(pdf).toContain("/Size 8");
+  });
+
+  it("มีกรอบแล้ว QR ต้องเล็กลงเพราะทั้งก้อนยังกว้างเท่าที่สั่งพิมพ์", () => {
+    const readScale = (pdf: string) =>
+      Number(/([\d.]+) 0 0 -[\d.]+ [\d.]+ [\d.]+ cm/.exec(pdf)?.[1]);
+    expect(readScale(pdfWithFrame(outlineStyle))).toBeLessThan(
+      readScale(pdfFor({ pageWidthMm: 100, pageHeightMm: 100, qrSizeMm: 80 })),
+    );
   });
 });

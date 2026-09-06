@@ -5,6 +5,7 @@ import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label, Select } from "@/components/ui/input";
 import type { QrMatrix } from "@/lib/qr/encode";
+import { frameLayout } from "@/lib/qr/frame";
 import { rasterizeLogoToJpeg } from "@/lib/qr/logo";
 import {
   moduleSizeMm,
@@ -13,6 +14,12 @@ import {
   printWarning,
   recommendedScanDistanceCm,
 } from "@/lib/qr/print";
+import {
+  dataUrlToHex,
+  printPixelsPerModule,
+  type RasterImage,
+  rasterizeCtaBand,
+} from "@/lib/qr/raster";
 import { renderPdfBlob } from "@/lib/qr/render-pdf";
 import { PNG_SIZES, renderPngBlob } from "@/lib/qr/render-png";
 import { renderSvg } from "@/lib/qr/render-svg";
@@ -32,11 +39,18 @@ function triggerDownload(blob: Blob, filename: string): void {
 export type QrDownloadProps = {
   matrix: QrMatrix | null;
   style: QrStyle;
+  /** แถบข้อความที่วาดไว้แล้วสำหรับความละเอียดหน้าจอ */
+  band: RasterImage | null;
   /** ใช้ตั้งชื่อไฟล์ เช่น qr-wifi */
   filenameBase: string;
 };
 
-export function QrDownload({ matrix, style, filenameBase }: QrDownloadProps) {
+export function QrDownload({
+  matrix,
+  style,
+  band,
+  filenameBase,
+}: QrDownloadProps) {
   const presetId = useId();
   const [busySize, setBusySize] = useState<number | null>(null);
   const [busyPdf, setBusyPdf] = useState(false);
@@ -52,7 +66,11 @@ export function QrDownload({ matrix, style, filenameBase }: QrDownloadProps) {
     setBusySize(size);
     setError(null);
     try {
-      const blob = await renderPngBlob(matrix, { size, style });
+      const blob = await renderPngBlob(matrix, {
+        size,
+        style,
+        bandImageSrc: band?.dataUrl ?? null,
+      });
       triggerDownload(blob, `${filenameBase}-${size}.png`);
     } catch {
       setError("ดาวน์โหลด PNG ไม่สำเร็จ ลองใหม่อีกครั้ง");
@@ -64,9 +82,12 @@ export function QrDownload({ matrix, style, filenameBase }: QrDownloadProps) {
   function downloadSvg() {
     if (matrix === null) return;
     setError(null);
-    const blob = new Blob([renderSvg(matrix, { style })], {
-      type: "image/svg+xml;charset=utf-8",
-    });
+    const blob = new Blob(
+      [renderSvg(matrix, { style, bandImageSrc: band?.dataUrl ?? null })],
+      {
+        type: "image/svg+xml;charset=utf-8",
+      },
+    );
     triggerDownload(blob, `${filenameBase}.svg`);
   }
 
@@ -81,9 +102,29 @@ export function QrDownload({ matrix, style, filenameBase }: QrDownloadProps) {
           ? null
           : await rasterizeLogoToJpeg(style.logo.src, style.paper);
 
+      // วาดแถบใหม่ที่ความละเอียดของงานพิมพ์จริง ไม่ใช้ของหน้าจอที่หยาบกว่า
+      const frame = frameLayout(matrix.size, style.frame);
+      const printBand =
+        frame.band === null
+          ? null
+          : await rasterizeCtaBand(
+              style.frame,
+              frame.band.width,
+              frame.band.height,
+              printPixelsPerModule(preset.qrSizeMm, frame.width),
+            );
+
       const blob = renderPdfBlob(matrix, {
         style,
         logo,
+        band:
+          printBand === null
+            ? null
+            : {
+                hex: dataUrlToHex(printBand.dataUrl),
+                widthPx: printBand.widthPx,
+                heightPx: printBand.heightPx,
+              },
         pageWidthMm: preset.pageWidthMm,
         pageHeightMm: preset.pageHeightMm,
         qrSizeMm: preset.qrSizeMm,
@@ -96,10 +137,12 @@ export function QrDownload({ matrix, style, filenameBase }: QrDownloadProps) {
     }
   }
 
+  const blockModules =
+    matrix === null ? null : frameLayout(matrix.size, style.frame).width;
   const modulesMm =
-    matrix === null ? null : moduleSizeMm(preset.qrSizeMm, matrix.size);
+    blockModules === null ? null : moduleSizeMm(preset.qrSizeMm, blockModules);
   const warning =
-    matrix === null ? null : printWarning(preset.qrSizeMm, matrix.size);
+    blockModules === null ? null : printWarning(preset.qrSizeMm, blockModules);
 
   return (
     <div className="space-y-5">
