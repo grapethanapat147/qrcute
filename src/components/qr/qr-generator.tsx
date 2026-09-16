@@ -38,6 +38,7 @@ import { PromptPaySummary } from "./promptpay-summary";
 import { QrDownload } from "./qr-download";
 import { QrFields } from "./qr-fields";
 import { QrPreview } from "./qr-preview";
+import { QrSaveButton } from "./qr-save-button";
 import { QrStyleControls } from "./qr-style-controls";
 import { useCtaBand } from "./use-cta-band";
 import { useDebouncedValue } from "./use-debounced-value";
@@ -272,6 +273,12 @@ export function QrGenerator() {
             amount={debouncedData.amount}
           />
         )}
+        <QrSaveButton
+          data={debouncedData}
+          style={effectiveStyle}
+          level={debouncedLevel}
+          disabled={matrix === null}
+        />
         <QrDownload
           matrix={matrix}
           style={effectiveStyle}

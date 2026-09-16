@@ -1,7 +1,12 @@
 import { after } from "next/server";
+import { renderInterstitial } from "@/lib/dynamic/interstitial";
 import { clientIp, hashIp, readScanContext } from "@/lib/dynamic/scan-context";
 import { isValidShortcode } from "@/lib/dynamic/shortcode";
-import { recordScan, resolveShortcode } from "@/lib/dynamic/supabase-rpc";
+import {
+  type ResolvedShortcode,
+  recordScan,
+  resolveShortcode,
+} from "@/lib/dynamic/supabase-rpc";
 import { siteConfig } from "@/lib/site";
 
 /**
@@ -30,6 +35,32 @@ function notFound(): Response {
   });
 }
 
+/**
+ * หน้าคั่นสำหรับ QR ที่ถูกพักหรือหยุดทำงานแล้ว
+ *
+ * ตอบ 200 ตอนยังกดไปต่อได้ และ 410 ตอนหยุดทำงานถาวร
+ * เพื่อให้ bot ที่ไล่เก็บลิงก์รู้ว่าอันไหนหมดอายุจริง โดยที่คนยังอ่านหน้าได้เหมือนกัน
+ */
+function interstitial(resolved: ResolvedShortcode): Response {
+  const usable = resolved.state === "suspended" && resolved.target !== null;
+
+  return new Response(
+    renderInterstitial({
+      kind: resolved.state === "suspended" ? "suspended" : "disabled",
+      target: resolved.target,
+      siteName: siteConfig.name,
+      siteUrl: siteConfig.url,
+    }),
+    {
+      status: usable ? 200 : 410,
+      headers: {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-store",
+      },
+    },
+  );
+}
+
 export async function GET(
   request: Request,
   context: { params: Promise<{ code: string }> },
@@ -39,9 +70,9 @@ export async function GET(
   // ตรวจรูปแบบก่อนแตะฐานข้อมูล — คำขอขยะจะได้ไม่กินคอนเนกชัน
   if (!isValidShortcode(code)) return notFound();
 
-  let target: string | null;
+  let resolved: ResolvedShortcode | null;
   try {
-    target = await resolveShortcode(
+    resolved = await resolveShortcode(
       code,
       AbortSignal.timeout(RESOLVE_TIMEOUT_MS),
     );
@@ -55,7 +86,7 @@ export async function GET(
     });
   }
 
-  if (target === null) return notFound();
+  if (resolved === null) return notFound();
 
   // บันทึกสถิติหลังตอบไปแล้ว ผู้สแกนจึงไม่ต้องรอ
   // ยอมให้สถิติหายถ้าล้มเหลว — ดีกว่าให้คนยืนรอหน้าร้าน
@@ -82,10 +113,15 @@ export async function GET(
     }
   });
 
+  // QR ที่เจ้าของหยุดจ่ายไม่ใช่ 404 — คนสแกนต้องยังมีทางไปต่อ (ADR 0008)
+  if (resolved.state !== "active" || resolved.target === null) {
+    return interstitial(resolved);
+  }
+
   return new Response(null, {
     status: 302,
     headers: {
-      location: target,
+      location: resolved.target,
       // ห้าม cache เด็ดขาด ไม่งั้นแก้ปลายทางแล้วคนที่เคยสแกนจะยังไปที่เดิม
       // ซึ่งทำลายสัญญาหลักของ dynamic QR
       "cache-control": "no-store, no-cache, must-revalidate",

@@ -1,6 +1,6 @@
 @AGENTS.md
 
-# QR Code Website (ชื่อชั่วคราว: QR ไทย)
+# QR Cute — เว็บสร้าง QR Code สำหรับตลาดไทย
 
 เว็บสร้าง QR Code สำหรับตลาดไทย ทำเงินจริงผ่าน freemium + lifetime pack
 เจ้าของโปรเจกต์ทำคนเดียว นอกเวลางาน ~10–15 ชม./สัปดาห์ deadline 19 ต.ค. 2026

@@ -47,11 +47,37 @@ async function callRpc(
   });
 }
 
-/** คืนปลายทางของ shortcode หรือ null ถ้าไม่มี ถูกปิด หรือถูก archive */
+/**
+ * สถานะของ QR ที่มีผลกับสิ่งที่คนสแกนเจอ
+ *
+ * active    = พาไปปลายทางทันที
+ * suspended = เจ้าของพ้นช่วงผ่อนผัน — คนสแกนเห็นหน้าคั่นที่ยังกดไปต่อได้
+ * disabled  = เลย 120 วันไปแล้ว — หน้าคั่นแจ้งว่าไม่ใช้งานแล้ว
+ * ดู docs/decisions/0008-downgrade-behaviour.md
+ */
+export type ShortcodeState = "active" | "suspended" | "disabled";
+
+export type ResolvedShortcode = {
+  target: string | null;
+  state: ShortcodeState;
+};
+
+function toState(value: unknown): ShortcodeState | null {
+  return value === "active" || value === "suspended" || value === "disabled"
+    ? value
+    : null;
+}
+
+/**
+ * คืนปลายทางและสถานะของ shortcode — null ถ้าไม่มีจริงหรือถูก archive
+ *
+ * ⚠️ ต้องไม่กรองสถานะทิ้งที่นี่ QR ที่ถูกพักไม่ใช่ 404
+ * คนที่ยืนสแกนป้ายอยู่หน้าร้านต้องได้ทางไปต่อเสมอ (ADR 0008)
+ */
 export async function resolveShortcode(
   code: string,
   signal?: AbortSignal,
-): Promise<string | null> {
+): Promise<ResolvedShortcode | null> {
   const response = await callRpc("resolve_shortcode", { code }, { signal });
 
   if (!response.ok) {
@@ -61,8 +87,19 @@ export async function resolveShortcode(
     );
   }
 
-  const target: unknown = await response.json();
-  return typeof target === "string" && target !== "" ? target : null;
+  // function คืนเป็นตาราง PostgREST จึงห่อมาเป็น array เสมอ
+  const rows: unknown = await response.json();
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+
+  const row = rows[0] as { target?: unknown; state?: unknown };
+  const state = toState(row.state);
+  if (state === null) return null;
+
+  return {
+    target:
+      typeof row.target === "string" && row.target !== "" ? row.target : null,
+    state,
+  };
 }
 
 export type RecordScanInput = {

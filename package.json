@@ -17,10 +17,14 @@
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
-    "test:rls": "psql \"postgresql://postgres:postgres@127.0.0.1:54722/postgres\" -v ON_ERROR_STOP=1 -f supabase/tests/rls.sql"
+    "reconcile:opn": "bun run scripts/reconcile-opn.ts",
+    "test:rls": "psql \"postgresql://postgres:postgres@127.0.0.1:54722/postgres\" -v ON_ERROR_STOP=1 -f supabase/tests/rls.sql",
+    "test:downgrade": "psql \"postgresql://postgres:postgres@127.0.0.1:54722/postgres\" -v ON_ERROR_STOP=1 -f supabase/tests/downgrade.sql"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.3.3",
+    "@supabase/ssr": "^0.12.6",
+    "@supabase/supabase-js": "^2.115.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.33.0",

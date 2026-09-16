@@ -145,9 +145,13 @@ create trigger on_auth_user_created
   for each row execute function public.handle_new_user();
 
 -- shortcode ที่บังเอิญมีคำต้องห้ามต้องถูกปฏิเสธ แล้วให้แอปสุ่มใหม่
+-- security definer เพราะ trigger นี้ทำงานตอนผู้ใช้ทั่วไป insert
+-- แต่ต้องอ่านตาราง blocklist ที่ไม่ได้ให้สิทธิ์ใครอ่าน
+-- ถ้าไม่ใส่ ผู้ใช้ที่ล็อกอินจะสร้าง QR ไม่ได้เลยด้วย permission denied
 create function public.reject_blocked_shortcode()
 returns trigger
 language plpgsql
+security definer
 set search_path = public
 as $$
 begin

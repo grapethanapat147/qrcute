@@ -1,7 +1,7 @@
 # ADR 0002 — ชื่อแบรนด์และโดเมนเป็น placeholder ผ่าน env
 
-- **สถานะ:** ยอมรับแล้ว (ชั่วคราว — ต้องปิดภายใน 25 ส.ค. 2026)
-- **วันที่:** 22 ส.ค. 2026
+- **สถานะ:** 🟡 ปิดครึ่งเดียว — ชื่อล็อกแล้วเป็น **QR Cute** (14 ก.ย. 2026) แต่ยังไม่ได้ซื้อโดเมน
+- **วันที่:** 22 ส.ค. 2026 (ยอมรับ) · 14 ก.ย. 2026 (ล็อกชื่อ)
 
 ## บริบท
 
@@ -17,8 +17,8 @@
 ค่าทั้งหมดอ่านจาก `src/lib/site.ts` ซึ่งอ่านต่อจาก env:
 
 ```
-NEXT_PUBLIC_SITE_NAME       ชื่อที่แสดงผล  (default: "QR ไทย")
-NEXT_PUBLIC_SITE_SHORT_NAME ชื่อสั้น        (default: "QRThai")
+NEXT_PUBLIC_SITE_NAME       ชื่อที่แสดงผล  (default: "QR Cute")
+NEXT_PUBLIC_SITE_SHORT_NAME ชื่อสั้น        (default: "QRCute")
 NEXT_PUBLIC_SITE_URL        origin         (default: "http://localhost:3000")
 ```
 
@@ -34,7 +34,18 @@ URL ทุกอันที่ต้องเป็น absolute ให้สร
 
 ## ต้องทำอะไรเพื่อปิด ADR นี้
 
-1. ตัดสินใจชื่อแบรนด์และซื้อโดเมน (กำหนด 25 ส.ค. — เป็น milestone ใน `docs/roadmap.md`)
-2. ตั้ง env จริงบน Vercel
-3. แก้ default ใน `src/lib/site.ts` ให้เป็นค่าจริง
-4. เปลี่ยนสถานะ ADR นี้เป็น "แทนที่แล้ว"
+1. [x] ตัดสินใจชื่อแบรนด์ — **QR Cute** (14 ก.ย. 2026)
+2. [x] แก้ default ใน `src/lib/site.ts` ให้เป็นค่าจริง
+3. [ ] 🔴 **ซื้อโดเมน** — เลยกำหนด 25 ส.ค. มาแล้ว และยังบล็อกนาฬิกา SEO
+       กับการสมัคร Opn อยู่ (ดู `docs/decisions/0007-payment-gateway.md`)
+4. [ ] ตั้ง env จริงบน Vercel แล้วแก้ default ของ `url`
+5. [ ] เปลี่ยนสถานะ ADR นี้เป็น "แทนที่แล้ว"
+
+## กันโดเมน placeholder หลุดขึ้น production
+
+ข้อเสียที่เขียนไว้ข้างบนว่า "ชื่อ placeholder อาจหลุดขึ้น production" ตอนนี้มีตัวกันแล้ว:
+`assertUrlConfigured()` ใน `src/lib/site.ts` จะโยน error ถ้า `VERCEL_ENV=production`
+แต่ `NEXT_PUBLIC_SITE_URL` ยังเป็น localhost
+
+เช็คด้วย `VERCEL_ENV` ไม่ใช่ `NODE_ENV` เพราะ `bun run build` ในเครื่องก็นับเป็น production
+ถ้าใช้ `NODE_ENV` จะ build ในเครื่องไม่ได้เลยตั้งแต่ยังไม่มีโดเมน

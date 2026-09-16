@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Noto_Sans_Thai } from "next/font/google";
-import { siteConfig } from "@/lib/site";
+import { assertUrlConfigured, siteConfig } from "@/lib/site";
 import "./globals.css";
 
 const thaiSans = Noto_Sans_Thai({
@@ -9,6 +9,11 @@ const thaiSans = Noto_Sans_Thai({
   variable: "--font-thai-sans",
   display: "swap",
 });
+
+// ต้องเรียกก่อนสร้าง metadata — canonical, og:url และ sitemap ล้วนงอกจาก siteConfig.url
+// ถ้าค่านั้นเป็น localhost บน production แล้วปล่อยผ่าน จะไม่มี error ให้ใครเห็น
+// แต่ Google เก็บ index ไม่ได้ทั้งเว็บ (ดู docs/decisions/0002-brand-placeholder.md)
+assertUrlConfigured();
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
