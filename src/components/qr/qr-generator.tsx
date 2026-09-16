@@ -24,6 +24,7 @@ import {
   QR_TYPE_LABELS,
   QR_TYPES,
   type QrData,
+  type QrType,
   validateQrData,
 } from "@/lib/qr/types";
 import {
@@ -79,14 +80,23 @@ function buildPreview(
   }
 }
 
-export function QrGenerator() {
+/**
+ * `initialType` มาจากหน้า /qr/[type] เพื่อให้ผู้ที่เข้ามาจากผลค้นหา
+ * เจอฟอร์มของประเภทที่เขาค้นหามาเลย ไม่ต้องกดเลือกอีกครั้ง
+ *
+ * ค่าใน URL ชนะเสมอ เพราะผู้ใช้ที่แชร์ลิงก์ QR ของตัวเองต้องได้ของเดิมคืน
+ * ไม่ว่าจะเปิดจากหน้าไหนก็ตาม
+ */
+export function QrGenerator({ initialType }: { initialType?: QrType } = {}) {
   const searchParams = useSearchParams();
   const typeGroupId = useId();
   const eccId = useId();
 
   const [panel, setPanel] = useState<PanelId>("data");
   const [data, setData] = useState<QrData>(
-    () => qrDataFromSearchParams(searchParams) ?? emptyQrData("promptpay"),
+    () =>
+      qrDataFromSearchParams(searchParams) ??
+      emptyQrData(initialType ?? "promptpay"),
   );
   const [level, setLevel] = useState<ErrorCorrectionLevel>(() =>
     errorCorrectionFromSearchParams(searchParams),

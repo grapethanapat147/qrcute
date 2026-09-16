@@ -1,6 +1,6 @@
 # SEO Plan
 
-สถานะ: ร่างแรก · อัปเดตล่าสุด 22 ส.ค. 2026
+สถานะ: ใช้งานจริงบางส่วน · อัปเดตล่าสุด 16 ก.ย. 2026
 
 > ⚠️ **ตัวเลข search volume ในเอกสารนี้ยังไม่ได้ verify** ทุก keyword ต้องเช็คกับ
 > Google Keyword Planner หรือ Ahrefs ก่อนล็อกโครงหน้าเว็บ — ถ้าไม่เช็ค เรากำลังเดา
@@ -29,17 +29,26 @@
 ```
 /                             หน้าแรก + generator          → "สร้าง qr code" (เป้าระยะยาว)
 /qr/[type]                    generator แยกประเภท          ← programmatic SEO
-    /qr/promptpay             "สร้าง qr code พร้อมเพย์"
-    /qr/url                   "แปลงลิงค์เป็น qr code"
-    /qr/wifi                  "สร้าง qr code wifi"
-    /qr/vcard                 "qr code นามบัตร"
-    /qr/line                  "qr code line"
-    /qr/text  /qr/tel  /qr/sms  /qr/email
-/use-case/[industry]          ร้านอาหาร / คาเฟ่ / อีเวนต์ / คลินิก / ร้านค้าออนไลน์
-/blog/[slug]                  how-to + เปรียบเทียบ
-/pricing  /about  /terms  /privacy
+    /qr/promptpay             "สร้าง qr code พร้อมเพย์"     ✅ live
+    /qr/url                   "แปลงลิงค์เป็น qr code"        ✅ live
+    /qr/wifi                  "สร้าง qr code wifi"          ✅ live
+    /qr/vcard                 "qr code นามบัตร"             ✅ live
+    /qr/line                  "qr code line"                ✅ live
+/use-case/[industry]          ✅ live ทั้ง 5 หน้า
+    /use-case/restaurant  /use-case/cafe  /use-case/event
+    /use-case/clinic      /use-case/online-shop
+/blog/[slug]                  how-to + เปรียบเทียบ          ⬜ ยังไม่ทำ (รอเนื้อหาจริง)
+/pricing  /about  /terms  /privacy                          ⬜ ยังไม่ทำ
 /en/...                       locale ที่สอง (หลัง 19 ต.ค. — ดู ADR 0003)
 ```
+
+> **แก้เมื่อ 16 ก.ย. 2026:** เอกสารนี้เคยระบุ `/qr/text` `/qr/tel` `/qr/sms` `/qr/email` ไว้ด้วย
+> แต่ประเภทเหล่านั้นถูกตัดออกจาก `QR_TYPES` เมื่อ 6 ก.ย. เพราะไม่มีทั้ง keyword cluster
+> และ use case ที่สร้างรายได้ จึงไม่ทำหน้าให้ — ตรงกับกฎใน §4 ว่า
+> **ถ้าเขียนเนื้อหาเฉพาะตัวให้หน้านั้นไม่ได้ อย่าสร้างหน้านั้น**
+>
+> ถ้าจะเพิ่มกลับ ต้องเพิ่มใน `src/lib/qr/types.ts` และเขียนเนื้อหาใน
+> `src/lib/seo/type-pages.ts` ก่อน หน้าและ sitemap จะโผล่ขึ้นเอง
 
 **กฎ:** URL หน้าไทยไม่มี prefix ภาษา · ห้ามใช้ตัวอักษรไทยใน path (ทำให้ URL ยาวและแชร์ยาก)
 
@@ -81,10 +90,12 @@
 
 ### ต้องมีตั้งแต่วันแรก
 
-- SSG/ISR ทุกหน้า marketing · generator เป็น client component ที่ hydrate เร็ว
-- `sitemap.xml` (แยก index เมื่อเกิน 1,000 URL) · `robots.txt` · canonical ทุกหน้า
-- `hreflang` th/en (เตรียมโครงไว้ แม้ยังไม่มี en)
-- `og:image` แบบ dynamic ผ่าน `next/og`
+- [x] SSG ทุกหน้า marketing · generator เป็น client component ที่ hydrate เร็ว
+- [x] `sitemap.xml` (`src/app/sitemap.ts` — ดึงรายการจากแหล่งเดียวกับหน้าเว็บ)
+- [x] `robots.txt` (`src/app/robots.ts`) · canonical ทุกหน้า
+- [x] `hreflang` th + x-default ทุกหน้า (ADR 0003 — เพิ่ม en เมื่อมีหน้าจริง)
+- [x] `og:image` แบบ dynamic ผ่าน `next/og` พร้อมฟอนต์ไทย subset
+      ⚠️ ถ้าโหลดฟอนต์ไม่ได้จะเรนเดอร์เฉพาะอักษรละติน ไม่ปล่อยให้เป็นกล่องสี่เหลี่ยม
 - Core Web Vitals ตามเกณฑ์ใน `docs/prd.md` §0 วัดจริงด้วย Vercel Speed Insights
 - ไม่มี CLS จากฟอนต์ — ใช้ `next/font` พร้อม `display: swap` และ fallback metric
 
