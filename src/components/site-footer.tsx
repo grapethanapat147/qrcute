@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LEGAL_DOCUMENTS } from "@/lib/legal";
 import { TYPE_PAGE_LIST } from "@/lib/seo/type-pages";
 import { USE_CASES } from "@/lib/seo/use-cases";
 import { siteConfig } from "@/lib/site";
@@ -55,6 +56,17 @@ export function SiteFooter() {
         <div className="text-sm text-muted-foreground">
           <p className="font-semibold text-foreground">{siteConfig.name}</p>
           <p className="mt-3">{siteConfig.description}</p>
+
+          <ul className="mt-6 flex flex-wrap gap-x-4 gap-y-2">
+            {LEGAL_DOCUMENTS.map((doc) => (
+              <li key={doc.slug}>
+                <Link href={`/${doc.slug}`} className="hover:text-foreground">
+                  {doc.h1}
+                </Link>
+              </li>
+            ))}
+          </ul>
+
           <p className="mt-6">
             © {new Date().getFullYear()} {siteConfig.name}
           </p>

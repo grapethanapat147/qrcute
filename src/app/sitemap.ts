@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { LEGAL_DOCUMENTS } from "@/lib/legal";
 import { TYPE_PAGE_LIST } from "@/lib/seo/type-pages";
 import { USE_CASES } from "@/lib/seo/use-cases";
 import { absoluteUrl } from "@/lib/site";
@@ -35,6 +36,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: now,
       changeFrequency: "monthly" as const,
       priority: 0.7,
+    })),
+    // หน้ากฎหมายไม่ได้ทำมาเพื่อติดอันดับ แต่ต้องถูก index เพราะผู้พิจารณา
+    // ใบสมัคร payment gateway และผู้ใช้ต้องค้นเจอได้
+    ...LEGAL_DOCUMENTS.map((doc) => ({
+      url: absoluteUrl(`/${doc.slug}`),
+      lastModified: new Date(doc.effectiveDate),
+      changeFrequency: "yearly" as const,
+      priority: 0.3,
     })),
   ];
 }

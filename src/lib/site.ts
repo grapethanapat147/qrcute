@@ -10,6 +10,16 @@ export const siteConfig = {
   name: process.env.NEXT_PUBLIC_SITE_NAME ?? "QR Cute",
   shortName: process.env.NEXT_PUBLIC_SITE_SHORT_NAME ?? "QRCute",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+  /** อีเมลที่ประกาศบนหน้าเงื่อนไขและนโยบายความเป็นส่วนตัว */
+  supportEmail: process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? "hello@qrcute.com",
+  /**
+   * ชื่อผู้ประกอบการตามกฎหมาย — จดในนามบุคคลธรรมดา (ADR 0007)
+   *
+   * ⚠️ ค่าเริ่มต้นเป็นชื่อภาษาอังกฤษจาก git config ซึ่งอาจไม่ตรงกับชื่อในบัตรประชาชน
+   * หน้าเงื่อนไขการใช้งานต้องใช้ชื่อตามเอกสารราชการ ตั้ง NEXT_PUBLIC_LEGAL_ENTITY
+   * ให้เป็นชื่อไทยตามบัตรก่อนเปิดเว็บจริง
+   */
+  legalEntity: process.env.NEXT_PUBLIC_LEGAL_ENTITY ?? "Thanapat Buranaraktham",
   description:
     "สร้าง QR Code ฟรี ไม่มีวันหมดอายุ รองรับพร้อมเพย์ WiFi นามบัตร LINE และดาวน์โหลดไฟล์คุณภาพสำหรับงานพิมพ์",
   locale: "th-TH",
