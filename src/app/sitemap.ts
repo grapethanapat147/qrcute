@@ -11,7 +11,7 @@ import { absoluteUrl } from "@/lib/site";
  * ทำให้ Search Console ขึ้น error และลดความน่าเชื่อถือของ sitemap ทั้งไฟล์
  * จึงดึงรายการจากแหล่งเดียวกับที่หน้าเว็บใช้ ไม่พิมพ์รายการซ้ำที่นี่
  *
- * หน้า /pricing /blog /about ยังไม่ได้ทำ จึงยังไม่อยู่ในนี้
+ * หน้า /blog /about ยังไม่ได้ทำ จึงยังไม่อยู่ในนี้
  * เพิ่มเมื่อหน้ามีจริงแล้วเท่านั้น
  */
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -23,6 +23,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: now,
       changeFrequency: "weekly",
       priority: 1,
+    },
+    {
+      url: absoluteUrl("/pricing"),
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.8,
     },
     ...TYPE_PAGE_LIST.map((page) => ({
       url: absoluteUrl(`/qr/${page.slug}`),

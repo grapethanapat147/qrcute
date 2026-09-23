@@ -58,6 +58,11 @@ export function SiteFooter() {
           <p className="mt-3">{siteConfig.description}</p>
 
           <ul className="mt-6 flex flex-wrap gap-x-4 gap-y-2">
+            <li>
+              <Link href="/pricing" className="hover:text-foreground">
+                ราคา
+              </Link>
+            </li>
             {LEGAL_DOCUMENTS.map((doc) => (
               <li key={doc.slug}>
                 <Link href={`/${doc.slug}`} className="hover:text-foreground">

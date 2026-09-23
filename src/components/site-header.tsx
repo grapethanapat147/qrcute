@@ -16,12 +16,20 @@ export function SiteHeader() {
           <QrCode className="size-5 text-primary" aria-hidden />
           {siteConfig.name}
         </Link>
-        <Link
-          href="/login"
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          เข้าสู่ระบบ
-        </Link>
+        <nav className="flex items-center gap-5 text-sm">
+          <Link
+            href="/pricing"
+            className="text-muted-foreground hover:text-foreground"
+          >
+            ราคา
+          </Link>
+          <Link
+            href="/login"
+            className="text-muted-foreground hover:text-foreground"
+          >
+            เข้าสู่ระบบ
+          </Link>
+        </nav>
       </div>
     </header>
   );
