@@ -2,6 +2,8 @@
 
 import { useId } from "react";
 import { Input, Label, Select } from "@/components/ui/input";
+import type { Plan } from "@/lib/billing/entitlements";
+import { planAllows } from "@/lib/billing/plan-gate";
 import type { ErrorCorrectionLevel } from "@/lib/qr/encode";
 import {
   DOT_SHAPE_LABELS,
@@ -18,6 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { QrFrameField } from "./qr-frame-field";
 import { QrLogoField } from "./qr-logo-field";
+import { UpgradeNotice } from "./upgrade-notice";
 
 type ColorFieldProps = {
   label: string;
@@ -55,13 +58,18 @@ export type QrStyleControlsProps = {
   style: QrStyle;
   level: ErrorCorrectionLevel;
   onChange: (style: QrStyle) => void;
+  /** แพ็กเกจของผู้เปิดหน้า — ตัดสินว่าโชว์ตัวควบคุมโลโก้กับกรอบหรือกล่องชวนอัปเกรด */
+  plan: Plan;
 };
 
 export function QrStyleControls({
   style,
   level,
   onChange,
+  plan,
 }: QrStyleControlsProps) {
+  // โลโก้กับกรอบข้อความอยู่ในแพ็กเกจเดียวกัน (custom_logo) ตาม docs/strategy.md §4
+  const canBrand = planAllows(plan, "custom_logo");
   const dotShapeId = useId();
   const eyeFrameId = useId();
   const eyeBallId = useId();
@@ -220,16 +228,22 @@ export function QrStyleControls({
         </div>
       </div>
 
-      <QrFrameField
-        frame={style.frame}
-        onChange={(frame) => onChange({ ...style, frame })}
-      />
+      {canBrand ? (
+        <>
+          <QrFrameField
+            frame={style.frame}
+            onChange={(frame) => onChange({ ...style, frame })}
+          />
 
-      <QrLogoField
-        logo={style.logo}
-        level={level}
-        onChange={(logo) => onChange({ ...style, logo })}
-      />
+          <QrLogoField
+            logo={style.logo}
+            level={level}
+            onChange={(logo) => onChange({ ...style, logo })}
+          />
+        </>
+      ) : (
+        <UpgradeNotice feature="custom_logo" />
+      )}
 
       <div className="space-y-1.5">
         <Label htmlFor={marginId}>พื้นที่ว่างรอบ QR</Label>

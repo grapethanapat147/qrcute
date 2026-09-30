@@ -43,6 +43,7 @@ import { QrSaveButton } from "./qr-save-button";
 import { QrStyleControls } from "./qr-style-controls";
 import { useCtaBand } from "./use-cta-band";
 import { useDebouncedValue } from "./use-debounced-value";
+import { useViewerPlan } from "./use-viewer-plan";
 
 type EncodeResult = { matrix: QrMatrix } | { error: string } | null;
 
@@ -89,6 +90,7 @@ function buildPreview(
  */
 export function QrGenerator({ initialType }: { initialType?: QrType } = {}) {
   const searchParams = useSearchParams();
+  const plan = useViewerPlan();
   const typeGroupId = useId();
   const eccId = useId();
 
@@ -258,6 +260,7 @@ export function QrGenerator({ initialType }: { initialType?: QrType } = {}) {
             style={clampLogoForLevel(style, level)}
             level={level}
             onChange={setStyle}
+            plan={plan}
           />
           <button
             type="button"
@@ -294,6 +297,7 @@ export function QrGenerator({ initialType }: { initialType?: QrType } = {}) {
           style={effectiveStyle}
           band={band}
           filenameBase={`qr-${data.type}`}
+          plan={plan}
         />
       </div>
     </div>
