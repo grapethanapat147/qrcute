@@ -21,6 +21,8 @@ export type OpnCharge = {
   paidAt: Date | null;
   ownerId: string | null;
   priceCode: PriceCode | null;
+  /** รหัส checkout ของเรา — ใช้ปิด checkout_sessions ให้ตรงแถว */
+  checkoutId: string | null;
 };
 
 export type ParsedOpnEvent = {
@@ -87,6 +89,8 @@ function parseCharge(data: unknown): OpnCharge | null {
     paidAt: asDate(charge.paid_at),
     ownerId: asOwnerId(metadata.owner_id),
     priceCode: priceCode !== null && isPriceCode(priceCode) ? priceCode : null,
+    // ตรวจรูปแบบเหมือน owner_id เพราะจะถูกเอาไปใส่ใน query เหมือนกัน
+    checkoutId: asOwnerId(metadata.checkout_id),
   };
 }
 

@@ -123,7 +123,9 @@ export default function PricingPage() {
                   variant={plan.featured ? "default" : "outline"}
                   className="mt-6 w-full"
                 >
-                  <Link href={plan.id === "free" ? "/" : "/login"}>
+                  <Link
+                    href={plan.id === "free" ? "/" : `/checkout/${plan.id}`}
+                  >
                     {plan.cta}
                   </Link>
                 </Button>

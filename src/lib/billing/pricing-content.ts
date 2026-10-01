@@ -1,6 +1,7 @@
 import { SCAN_RETENTION_DAYS } from "@/lib/legal/privacy";
 import { DYNAMIC_LAPSE_DAYS } from "@/lib/qr/dynamic-support";
 import { GRACE_DAYS } from "./billing-events";
+import { LIFETIME_SEAT_LIMIT } from "./checkout";
 import { PLAN_QUOTAS } from "./entitlements";
 import { formatSatang, PRICES } from "./plans";
 
@@ -124,7 +125,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     highlights: [
       "ได้ทุกอย่างของ Pro ตลอดไป ไม่มีเรียกเก็บอีก",
       "จ่ายด้วยพร้อมเพย์ได้ ไม่ต้องมีบัตรเครดิต",
-      "จำกัด 100 สิทธิ์แรกเท่านั้น",
+      `จำกัด ${LIFETIME_SEAT_LIMIT} สิทธิ์แรกเท่านั้น`,
     ],
     cta: "ซื้อแบบจ่ายครั้งเดียว",
   },

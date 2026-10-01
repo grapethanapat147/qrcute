@@ -34,6 +34,53 @@ export type Database = {
   };
   public: {
     Tables: {
+      checkout_sessions: {
+        Row: {
+          amount_satang: number;
+          completed_at: string | null;
+          created_at: string;
+          currency: string;
+          gateway: string;
+          gateway_charge_id: string | null;
+          id: string;
+          owner_id: string;
+          price_code: string;
+          status: string;
+        };
+        Insert: {
+          amount_satang: number;
+          completed_at?: string | null;
+          created_at?: string;
+          currency?: string;
+          gateway?: string;
+          gateway_charge_id?: string | null;
+          id?: string;
+          owner_id: string;
+          price_code: string;
+          status?: string;
+        };
+        Update: {
+          amount_satang?: number;
+          completed_at?: string | null;
+          created_at?: string;
+          currency?: string;
+          gateway?: string;
+          gateway_charge_id?: string | null;
+          id?: string;
+          owner_id?: string;
+          price_code?: string;
+          status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "checkout_sessions_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       entitlements: {
         Row: {
           expires_at: string | null;

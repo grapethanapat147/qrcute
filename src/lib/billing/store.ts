@@ -286,3 +286,66 @@ export async function deleteExpiredScans(): Promise<number> {
 
   return data ?? 0;
 }
+
+/**
+ * บันทึกว่ามีคนกดเริ่มชำระเงิน — ใช้ service role เพราะผู้ใช้ห้ามเขียนตารางนี้เอง
+ * (ราคาต้องมาจากเซิร์ฟเวอร์ ดูเหตุผลใน migration 20261001100000_checkout.sql)
+ */
+export async function createCheckoutSession(input: {
+  checkoutId: string;
+  ownerId: string;
+  priceCode: string;
+  amountSatang: number;
+}): Promise<void> {
+  const { error } = await admin().from("checkout_sessions").insert({
+    id: input.checkoutId,
+    owner_id: input.ownerId,
+    price_code: input.priceCode,
+    amount_satang: input.amountSatang,
+    gateway: GATEWAY,
+  });
+
+  if (error !== null) {
+    throw new Error(`บันทึก checkout ไม่สำเร็จ: ${error.message}`);
+  }
+}
+
+/** ปิด checkout เมื่อ webhook ยืนยันว่าจ่ายสำเร็จ — เรียกซ้ำได้ ไม่เปลี่ยนผล */
+export async function markCheckoutCompleted(
+  checkoutId: string,
+  chargeId: string,
+): Promise<void> {
+  const { error } = await admin()
+    .from("checkout_sessions")
+    .update({
+      status: "completed",
+      completed_at: new Date().toISOString(),
+      gateway_charge_id: chargeId,
+    })
+    .eq("id", checkoutId)
+    .eq("status", "pending");
+
+  if (error !== null) {
+    throw new Error(`ปิด checkout ไม่สำเร็จ: ${error.message}`);
+  }
+}
+
+/**
+ * จำนวนสิทธิ์จ่ายครั้งเดียวที่ขายสำเร็จแล้วทั้งระบบ
+ *
+ * นับจาก payments ไม่ใช่ checkout_sessions เพราะคนที่กดแล้วไม่จ่าย
+ * ไม่ควรกินสิทธิ์ของคนอื่น
+ */
+export async function countLifetimeSales(): Promise<number> {
+  const { count, error } = await admin()
+    .from("payments")
+    .select("id", { count: "exact", head: true })
+    .eq("price_code", "pro_lifetime")
+    .eq("status", "successful");
+
+  if (error !== null) {
+    throw new Error(`นับสิทธิ์จ่ายครั้งเดียวไม่สำเร็จ: ${error.message}`);
+  }
+
+  return count ?? 0;
+}

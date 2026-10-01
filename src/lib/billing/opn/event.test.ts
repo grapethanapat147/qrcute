@@ -43,6 +43,7 @@ describe("parseOpnEvent", () => {
       paidAt: new Date("2026-09-07T09:59:58Z"),
       ownerId: OWNER,
       priceCode: "pro_monthly",
+      checkoutId: null,
     });
     expect(parsed?.livemode).toBe(false);
   });

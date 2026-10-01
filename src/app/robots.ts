@@ -17,7 +17,14 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/api/", "/dashboard", "/login", "/auth/", "/r/"],
+      disallow: [
+        "/api/",
+        "/dashboard",
+        "/login",
+        "/auth/",
+        "/r/",
+        "/checkout/",
+      ],
     },
     sitemap: absoluteUrl("/sitemap.xml"),
   };

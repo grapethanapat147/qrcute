@@ -647,6 +647,56 @@ begin
 end;
 $$;
 
+-- ---------------------------------------------------------------------------
+-- 18. checkout_sessions — เจ้าของอ่านได้ แต่สร้างหรือแก้ราคาเองไม่ได้
+--
+-- ถ้าผู้ใช้เขียนตารางนี้ได้ จะสร้างแถวที่ amount_satang = 100 แล้วอ้างว่า
+-- ตกลงซื้อที่ราคานั้น ราคาต้องมาจากเซิร์ฟเวอร์เท่านั้น
+-- ---------------------------------------------------------------------------
+
+do $$
+declare
+  alice uuid := '11111111-1111-1111-1111-111111111111';
+  bob   uuid := '22222222-2222-2222-2222-222222222222';
+  visible integer;
+  blocked boolean := false;
+begin
+  insert into public.checkout_sessions (owner_id, price_code, amount_satang)
+  values (alice, 'pro_monthly', 14900), (bob, 'pro_yearly', 149000);
+
+  perform pg_temp.act_as(alice);
+
+  select count(*) into visible from public.checkout_sessions;
+  assert visible = 1, format('อลิซควรเห็น checkout 1 รายการ แต่เห็น %s', visible);
+
+  begin
+    insert into public.checkout_sessions (owner_id, price_code, amount_satang)
+    values (alice, 'pro_lifetime', 100);
+    assert false, 'ผู้ใช้ต้องสร้าง checkout ราคาที่ตั้งเองไม่ได้';
+  exception when insufficient_privilege then blocked := true;
+  end;
+  assert blocked;
+
+  blocked := false;
+  begin
+    update public.checkout_sessions set amount_satang = 100 where owner_id = alice;
+    assert false, 'ผู้ใช้ต้องแก้ราคาใน checkout ไม่ได้';
+  exception when insufficient_privilege then blocked := true;
+  end;
+  assert blocked;
+
+  blocked := false;
+  perform pg_temp.act_as_anon();
+  begin
+    perform count(*) from public.checkout_sessions;
+  exception when insufficient_privilege then blocked := true;
+  end;
+  assert blocked, 'anon ต้องอ่าน checkout_sessions ไม่ได้';
+
+  perform pg_temp.act_as_admin();
+end;
+$$;
+
 \echo 'RLS และ constraint ผ่านทั้งหมด'
 
 rollback;

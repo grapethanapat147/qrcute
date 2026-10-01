@@ -7,6 +7,7 @@ import {
   claimEvent,
   finishEvent,
   loadSubscription,
+  markCheckoutCompleted,
   recordPayment,
   restoreSuspendedQrCodes,
   saveSubscription,
@@ -66,6 +67,11 @@ export async function processOpnEvent(rawBody: string): Promise<ProcessResult> {
   if (charge !== null) {
     await recordPayment(charge);
     outcome.push(`payment:${charge.status}`);
+
+    if (charge.status === "successful" && charge.checkoutId !== null) {
+      await markCheckoutCompleted(charge.checkoutId, charge.chargeId);
+      outcome.push("checkout:completed");
+    }
   }
 
   const intent = toIntent(event);
