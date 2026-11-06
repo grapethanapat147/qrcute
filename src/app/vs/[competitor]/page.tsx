@@ -23,9 +23,16 @@ export async function generateMetadata({
   if (item === undefined) return {};
   const url = absoluteUrl(`/vs/${item.slug}`);
   return {
-    title: item.title,
+    // absolute เพราะ title มีชื่อแบรนด์อยู่แล้ว template จะต่อ "| QR Cute" ซ้ำ
+    title: { absolute: item.title },
     description: item.metaDescription,
     alternates: { canonical: url, languages: { th: url, "x-default": url } },
+    openGraph: {
+      type: "article",
+      url,
+      title: item.title,
+      description: item.metaDescription,
+    },
   };
 }
 
