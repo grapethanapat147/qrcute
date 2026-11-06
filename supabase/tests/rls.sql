@@ -740,6 +740,27 @@ begin
 end;
 $$;
 
+-- ---------------------------------------------------------------------------
+-- 20. anon/ผู้ใช้เรียกฟังก์ชันภายในผ่าน /rest/v1/rpc ไม่ได้ (cloud แจก execute ให้เองถ้าไม่ล้าง)
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  fn text;
+begin
+  foreach fn in array array[
+    'public.apply_billing_event(uuid,timestamptz,text,text,text,timestamptz,timestamptz)',
+    'public.restore_suspended_qr_codes(uuid)',
+    'public.run_downgrade_sweep()',
+    'public.delete_expired_scans()',
+    'public.free_dynamic_qr_quota()'
+  ] loop
+    assert not has_function_privilege('anon', fn, 'execute'), format('anon ต้องเรียก %s ไม่ได้', fn);
+    assert not has_function_privilege('authenticated', fn, 'execute'),
+      format('ผู้ใช้ต้องเรียก %s ไม่ได้', fn);
+  end loop;
+end;
+$$;
+
 \echo 'RLS และ constraint ผ่านทั้งหมด'
 
 rollback;
