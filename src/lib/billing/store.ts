@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { ShopPageInput } from "@/lib/shop/page";
 import type { Database } from "@/lib/supabase/database.types";
 import type { SubscriptionState } from "./billing-events";
 import type { Plan, SubscriptionStatus } from "./entitlements";
@@ -348,4 +349,26 @@ export async function countLifetimeSales(): Promise<number> {
   }
 
   return count ?? 0;
+}
+
+/**
+ * บันทึกหน้าร้าน — ใช้ service role เพราะผู้ใช้ห้ามเขียนตารางนี้เอง
+ * (ต้องเช็ค Pro ก่อนเสมอ ดู migration 20261106100000_shop_pages.sql)
+ * หนึ่งบัญชีหนึ่งหน้า: มีอยู่แล้วแก้ ไม่มีสร้างใหม่ด้วย slug ที่ส่งมา
+ */
+export async function saveShopPage(
+  ownerId: string,
+  slug: string,
+  input: ShopPageInput,
+): Promise<void> {
+  const { error } = await admin()
+    .from("shop_pages")
+    .upsert(
+      { owner_id: ownerId, slug, ...input, links: input.links as never },
+      { onConflict: "owner_id", ignoreDuplicates: false },
+    );
+
+  if (error !== null) {
+    throw new Error(`บันทึกหน้าร้านไม่สำเร็จ: ${error.message}`);
+  }
 }

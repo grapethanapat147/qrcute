@@ -697,6 +697,49 @@ begin
 end;
 $$;
 
+-- ---------------------------------------------------------------------------
+-- 19. shop_pages — เจ้าของอ่านได้ เขียนเองไม่ได้ คนทั่วไปเห็นเฉพาะช่องสาธารณะ
+--
+-- ถ้าผู้ใช้เขียนตารางนี้ได้เอง คนแพ็กเกจฟรีจะสร้างหน้าร้านได้โดยไม่ต้องจ่าย
+-- ---------------------------------------------------------------------------
+
+do $$
+declare
+  alice uuid := '11111111-1111-1111-1111-111111111111';
+  bob   uuid := '22222222-2222-2222-2222-222222222222';
+  visible integer;
+  blocked boolean := false;
+  shown text;
+begin
+  insert into public.shop_pages (owner_id, slug, name) values
+    (alice, 'shpa234', 'ร้านอลิซ'), (bob, 'shpb234', 'ร้านบ๊อบ');
+
+  perform pg_temp.act_as(alice);
+  select count(*) into visible from public.shop_pages;
+  assert visible = 1, format('อลิซควรเห็นหน้าร้าน 1 หน้า แต่เห็น %s', visible);
+
+  begin
+    update public.shop_pages set name = 'แก้เอง' where owner_id = alice;
+    assert false, 'ผู้ใช้ต้องแก้หน้าร้านตรง ๆ ไม่ได้ ต้องผ่าน server action ที่เช็ค Pro';
+  exception when insufficient_privilege then blocked := true;
+  end;
+  assert blocked;
+
+  blocked := false;
+  perform pg_temp.act_as_anon();
+  begin
+    perform count(*) from public.shop_pages;
+  exception when insufficient_privilege then blocked := true;
+  end;
+  assert blocked, 'anon ต้องอ่านตาราง shop_pages ตรง ๆ ไม่ได้ (จะเห็น owner_id)';
+
+  select name into shown from public.shop_page_by_slug('shpb234');
+  assert shown = 'ร้านบ๊อบ', 'คนทั่วไปต้องเปิดหน้าร้านผ่าน slug ได้';
+
+  perform pg_temp.act_as_admin();
+end;
+$$;
+
 \echo 'RLS และ constraint ผ่านทั้งหมด'
 
 rollback;

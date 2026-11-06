@@ -320,6 +320,53 @@ export type Database = {
           },
         ];
       };
+      shop_pages: {
+        Row: {
+          created_at: string;
+          description: string;
+          hours: string;
+          id: string;
+          links: Json;
+          name: string;
+          owner_id: string;
+          phone: string;
+          slug: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          description?: string;
+          hours?: string;
+          id?: string;
+          links?: Json;
+          name: string;
+          owner_id: string;
+          phone?: string;
+          slug: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          description?: string;
+          hours?: string;
+          id?: string;
+          links?: Json;
+          name?: string;
+          owner_id?: string;
+          phone?: string;
+          slug?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "shop_pages_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: true;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       shortcode_blocklist: {
         Row: {
           fragment: string;
@@ -467,6 +514,16 @@ export type Database = {
       set_qr_target: {
         Args: { new_target: string; qr_id: string };
         Returns: number;
+      };
+      shop_page_by_slug: {
+        Args: { p_slug: string };
+        Returns: {
+          description: string;
+          hours: string;
+          links: Json;
+          name: string;
+          phone: string;
+        }[];
       };
     };
     Enums: {

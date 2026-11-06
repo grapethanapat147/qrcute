@@ -54,6 +54,12 @@ export const PRICING_FEATURES: PricingFeature[] = [
     note: "แก้ปลายทางกี่ครั้งก็ได้โดยไม่ต้องพิมพ์ป้ายใหม่",
   },
   {
+    label: "หน้าร้านออนไลน์ 1 หน้า",
+    free: "—",
+    pro: "✓",
+    note: "รวมลิงก์ เบอร์โทร และเวลาเปิดปิดไว้หน้าเดียว ไม่ต้องมีเว็บไซต์ แก้ได้ตลอดโดยไม่ต้องพิมพ์ป้ายใหม่",
+  },
+  {
     label: "สถิติการสแกน",
     free: `${SCAN_RETENTION_DAYS.free} วัน`,
     pro: `${SCAN_RETENTION_DAYS.pro} วัน`,
@@ -97,6 +103,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     highlights: [
       `QR แบบแก้ปลายทางได้ ${PLAN_QUOTAS.pro.dynamic_qr} รายการ`,
       "ดาวน์โหลด SVG และ PDF ขนาดมิลลิเมตรจริง",
+      "หน้าร้านออนไลน์ ไม่ต้องมีเว็บไซต์",
       `สถิติการสแกนย้อนหลัง ${SCAN_RETENTION_DAYS.pro} วัน`,
     ],
     cta: "เริ่มใช้ Pro",
