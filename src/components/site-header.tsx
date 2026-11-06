@@ -18,6 +18,12 @@ export function SiteHeader() {
         </Link>
         <nav className="flex items-center gap-5 text-sm">
           <Link
+            href="/check"
+            className="text-muted-foreground hover:text-foreground"
+          >
+            ตรวจ QR
+          </Link>
+          <Link
             href="/pricing"
             className="text-muted-foreground hover:text-foreground"
           >
