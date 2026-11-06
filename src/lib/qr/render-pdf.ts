@@ -3,6 +3,7 @@ import { frameLayout } from "./frame";
 import { formatNumber, roundedRect, toPdfPathData } from "./geometry";
 import { mmToPt } from "./print";
 import { logoLayout, qrPaths } from "./render-svg";
+import type { Box } from "./sign";
 import { parseHexColor, type QrStyle } from "./style";
 
 /**
@@ -63,6 +64,8 @@ export type PdfRenderOptions = {
   logo?: PdfImage | null;
   /** แถบข้อความที่วาดด้วย canvas แล้วแปลงเป็น JPEG */
   band?: PdfImage | null;
+  /** ภาพข้อความของป้าย (ชื่อร้าน/ชื่อบัญชี) พร้อมกล่องเป็นมิลลิเมตร นับ y จากขอบบน */
+  texts?: Array<{ image: PdfImage; boxMm: Box }>;
 };
 
 type Placement = {
@@ -207,6 +210,16 @@ function buildContentStream(
     operators.push(...imageOperators("Band", place, frame.band));
   }
 
+  const pageHeightPt = mmToPt(options.pageHeightMm);
+  (options.texts ?? []).forEach(({ boxMm }, index) => {
+    operators.push(
+      "q",
+      `${n(mmToPt(boxMm.width))} 0 0 ${n(mmToPt(boxMm.height))} ${n(mmToPt(boxMm.x))} ${n(pageHeightPt - mmToPt(boxMm.y + boxMm.height))} cm`,
+      `/Text${index} Do`,
+      "Q",
+    );
+  });
+
   return operators.join("\n");
 }
 
@@ -224,6 +237,9 @@ export function renderPdf(matrix: QrMatrix, options: PdfRenderOptions): string {
   if (frame.band !== null && options.band != null) {
     images.push({ name: "Band", image: options.band });
   }
+  (options.texts ?? []).forEach(({ image }, index) => {
+    images.push({ name: `Text${index}`, image });
+  });
 
   const objects = [
     "<< /Type /Catalog /Pages 2 0 R >>",

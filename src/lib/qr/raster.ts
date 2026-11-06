@@ -1,4 +1,5 @@
 import { fitCtaText, type QrFrame } from "./frame";
+import type { Box, SignLine } from "./sign";
 
 /**
  * วาดแถบข้อความ CTA ด้วย canvas ของเบราว์เซอร์
@@ -80,8 +81,73 @@ export async function rasterizeCtaBand(
   };
 }
 
+/**
+ * วาดข้อความของป้ายลงในกล่อง — แบ่งความสูงให้บรรทัดละเท่ากัน แล้วย่อแต่ละบรรทัดให้พอดีกว้าง
+ * ใช้ทั้งตอนวาดป้าย PNG ทั้งแผ่น และตอนทำภาพข้อความไปฝังใน PDF
+ */
+export async function drawSignLines(
+  context: CanvasRenderingContext2D,
+  lines: SignLine[],
+  box: Box,
+): Promise<void> {
+  await document.fonts.ready;
+  const fontFamily = resolveThaiFontFamily();
+  const rowHeight = box.height / lines.length;
+
+  lines.forEach((line, row) => {
+    const font = (size: number) => `${line.weight} ${size}px ${fontFamily}`;
+    const fitted = fitCtaText(line.text, box.width, rowHeight, (text, size) => {
+      context.font = font(size);
+      return context.measureText(text).width;
+    });
+    context.fillStyle = line.color;
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.font = font(fitted.fontSizePx);
+
+    const lineHeight = fitted.fontSizePx * 1.45;
+    const top = box.y + row * rowHeight;
+    const first =
+      top +
+      rowHeight / 2 -
+      (lineHeight * fitted.lines.length) / 2 +
+      lineHeight / 2;
+    fitted.lines.forEach((text, index) => {
+      context.fillText(text, box.x + box.width / 2, first + index * lineHeight);
+    });
+  });
+}
+
+/** ภาพข้อความพื้นขาวสำหรับฝังใน PDF */
+export async function rasterizeSignLines(
+  lines: SignLine[],
+  widthPx: number,
+  heightPx: number,
+): Promise<RasterImage | null> {
+  if (lines.length === 0) return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = widthPx;
+  canvas.height = heightPx;
+  const context = canvas.getContext("2d");
+  if (context === null) throw new Error("เบราว์เซอร์นี้ไม่รองรับ canvas");
+
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, widthPx, heightPx);
+  await drawSignLines(context, lines, {
+    x: 0,
+    y: 0,
+    width: widthPx,
+    height: heightPx,
+  });
+  return {
+    dataUrl: canvas.toDataURL("image/jpeg", 0.95),
+    widthPx,
+    heightPx,
+  };
+}
+
 /** ความละเอียดงานพิมพ์ที่ใช้กันเป็นมาตรฐาน */
-const PRINT_DPI = 300;
+export const PRINT_DPI = 300;
 
 /**
  * กี่พิกเซลต่อหนึ่ง module เมื่อพิมพ์ที่ขนาดจริง

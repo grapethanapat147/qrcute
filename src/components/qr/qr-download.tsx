@@ -10,6 +10,7 @@ import type { QrMatrix } from "@/lib/qr/encode";
 import { frameLayout } from "@/lib/qr/frame";
 import { rasterizeLogoToJpeg } from "@/lib/qr/logo";
 import {
+  MM_PER_INCH,
   moduleSizeMm,
   PRINT_PRESETS,
   type PrintPreset,
@@ -18,17 +19,50 @@ import {
 } from "@/lib/qr/print";
 import {
   dataUrlToHex,
+  PRINT_DPI,
   printPixelsPerModule,
   type RasterImage,
   rasterizeCtaBand,
+  rasterizeSignLines,
 } from "@/lib/qr/raster";
 import { renderPdfBlob } from "@/lib/qr/render-pdf";
 import { PNG_SIZES, renderPngBlob } from "@/lib/qr/render-png";
 import { renderSvg } from "@/lib/qr/render-svg";
+import {
+  type Box,
+  isSignEmpty,
+  type PaymentSign,
+  type SignLine,
+  signFooterLines,
+  signHeaderLines,
+  signLayout,
+} from "@/lib/qr/sign";
 import type { QrStyle } from "@/lib/qr/style";
 import { UpgradeNotice } from "./upgrade-notice";
 
-function triggerDownload(blob: Blob, filename: string): void {
+/** ภาพข้อความป้ายที่ 300 dpi พร้อมกล่องเป็นมิลลิเมตร */
+async function signPdfText(lines: SignLine[], boxMm: Box | null) {
+  if (boxMm === null || lines.length === 0) return [];
+  const pxPerMm = PRINT_DPI / MM_PER_INCH;
+  const image = await rasterizeSignLines(
+    lines,
+    Math.round(boxMm.width * pxPerMm),
+    Math.round(boxMm.height * pxPerMm),
+  );
+  if (image === null) return [];
+  return [
+    {
+      image: {
+        hex: dataUrlToHex(image.dataUrl),
+        widthPx: image.widthPx,
+        heightPx: image.heightPx,
+      },
+      boxMm,
+    },
+  ];
+}
+
+export function triggerDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -48,6 +82,8 @@ export type QrDownloadProps = {
   band: RasterImage | null;
   /** ใช้ตั้งชื่อไฟล์ เช่น qr-wifi */
   filenameBase: string;
+  /** ชื่อร้าน/ชื่อบัญชีที่ใส่ลง PDF ด้วย ถ้าขนาดกระดาษมีที่ว่าง */
+  sign: PaymentSign;
 };
 
 export function QrDownload({
@@ -56,6 +92,7 @@ export function QrDownload({
   plan,
   band,
   filenameBase,
+  sign,
 }: QrDownloadProps) {
   const presetId = useId();
   const [busySize, setBusySize] = useState<number | null>(null);
@@ -120,9 +157,21 @@ export function QrDownload({
               printPixelsPerModule(preset.qrSizeMm, frame.width),
             );
 
+      const layout = signLayout(
+        preset.pageWidthMm,
+        preset.pageHeightMm,
+        preset.qrSizeMm,
+        (preset.qrSizeMm * frame.height) / frame.width,
+      );
+      const texts = [
+        ...(await signPdfText(signHeaderLines(sign), layout.header)),
+        ...(await signPdfText(signFooterLines(sign), layout.footer)),
+      ];
+
       const blob = renderPdfBlob(matrix, {
         style,
         logo,
+        texts,
         band:
           printBand === null
             ? null
@@ -143,14 +192,24 @@ export function QrDownload({
     }
   }
 
-  const blockModules =
-    matrix === null ? null : frameLayout(matrix.size, style.frame).width;
+  const blockFrame =
+    matrix === null ? null : frameLayout(matrix.size, style.frame);
+  const blockModules = blockFrame?.width ?? null;
   const modulesMm =
     blockModules === null ? null : moduleSizeMm(preset.qrSizeMm, blockModules);
   const canPrint = planAllows(plan, "print_pdf");
 
   const warning =
     blockModules === null ? null : printWarning(preset.qrSizeMm, blockModules);
+  const signDoesNotFit =
+    !isSignEmpty(sign) &&
+    blockFrame !== null &&
+    signLayout(
+      preset.pageWidthMm,
+      preset.pageHeightMm,
+      preset.qrSizeMm,
+      (preset.qrSizeMm * blockFrame.height) / blockFrame.width,
+    ).header === null;
 
   return (
     <div className="space-y-5">
@@ -237,6 +296,13 @@ export function QrDownload({
           {warning !== null && (
             <p className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-warning-foreground">
               {warning}
+            </p>
+          )}
+
+          {signDoesNotFit && (
+            <p className="text-sm text-muted-foreground">
+              ขนาดนี้ QR เต็มแผ่น ไม่มีที่ว่างสำหรับชื่อร้านและชื่อบัญชี
+              ถ้าต้องการป้ายรับเงินให้เลือกป้ายตั้งโต๊ะ A6 หรือกระดาษ A4
             </p>
           )}
 

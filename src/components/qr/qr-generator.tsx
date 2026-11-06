@@ -16,6 +16,7 @@ import { clampLogoForLevel, logoWarning } from "@/lib/qr/logo";
 import { buildPayload } from "@/lib/qr/payload";
 import { svgToDataUri } from "@/lib/qr/render-png";
 import { renderSvg } from "@/lib/qr/render-svg";
+import { EMPTY_SIGN, type PaymentSign } from "@/lib/qr/sign";
 import { DEFAULT_QR_STYLE, type QrStyle, validateStyle } from "@/lib/qr/style";
 import {
   emptyQrData,
@@ -35,6 +36,7 @@ import {
   qrStyleToSearchParams,
 } from "@/lib/qr/url-state";
 import { cn } from "@/lib/utils";
+import { PaymentSignPanel } from "./payment-sign";
 import { PromptPaySummary } from "./promptpay-summary";
 import { QrDownload } from "./qr-download";
 import { QrFields } from "./qr-fields";
@@ -106,6 +108,8 @@ export function QrGenerator({ initialType }: { initialType?: QrType } = {}) {
   const [style, setStyle] = useState<QrStyle>(() =>
     qrStyleFromSearchParams(searchParams),
   );
+  // shortcut: ป้ายไม่ถูกเก็บใน URL หรือร่าง รีเฟรชแล้วต้องพิมพ์ชื่อร้านใหม่, เก็บถ้าผู้ใช้บ่น
+  const [sign, setSign] = useState<PaymentSign>(EMPTY_SIGN);
 
   const activeUseCase = findUseCaseByLevel(level);
   const debouncedData = useDebouncedValue(data);
@@ -225,6 +229,16 @@ export function QrGenerator({ initialType }: { initialType?: QrType } = {}) {
 
           <QrFields data={data} onChange={setData} />
 
+          {data.type === "promptpay" && (
+            <PaymentSignPanel
+              matrix={matrix}
+              style={effectiveStyle}
+              band={band}
+              sign={sign}
+              onChange={setSign}
+            />
+          )}
+
           <div className="space-y-1.5">
             <Label htmlFor={eccId}>จะเอา QR นี้ไปใช้ที่ไหน</Label>
             <Select
@@ -298,6 +312,7 @@ export function QrGenerator({ initialType }: { initialType?: QrType } = {}) {
           band={band}
           filenameBase={`qr-${data.type}`}
           plan={plan}
+          sign={debouncedData.type === "promptpay" ? sign : EMPTY_SIGN}
         />
       </div>
     </div>

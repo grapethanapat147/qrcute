@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { encodeQr } from "./encode";
+import { formatNumber } from "./geometry";
 import {
   MIN_MODULE_MM,
   mmToPt,
@@ -316,5 +317,32 @@ describe("กรอบและแถบข้อความใน PDF", () => 
     expect(readScale(pdfWithFrame(outlineStyle))).toBeLessThan(
       readScale(pdfFor({ pageWidthMm: 100, pageHeightMm: 100, qrSizeMm: 80 })),
     );
+  });
+});
+
+describe("ข้อความป้ายรับเงินใน PDF", () => {
+  const image = { hex: "ffd8ffdb01", widthPx: 1100, heightPx: 200 };
+
+  it("ฝังหัวและท้ายป้ายเป็น XObject แยกกัน วางตามมิลลิเมตรจากขอบบน", () => {
+    const pdf = pdfFor({
+      pageWidthMm: 105,
+      pageHeightMm: 148,
+      qrSizeMm: 80,
+      texts: [
+        { image, boxMm: { x: 6.3, y: 6.3, width: 92.4, height: 17 } },
+        { image, boxMm: { x: 6.3, y: 125, width: 92.4, height: 17 } },
+      ],
+    });
+    expect(pdf).toContain("/XObject << /Text0 6 0 R /Text1 7 0 R >>");
+    expect(pdf).toContain("/Text0 Do");
+    expect(pdf).toContain("/Text1 Do");
+    // กล่องหัวป้าย: y ล่าง = 148 - (6.3 + 17) มม. แปลงเป็น pt
+    expect(pdf).toContain(
+      `${formatNumber(mmToPt(92.4))} 0 0 ${formatNumber(mmToPt(17))} ${formatNumber(mmToPt(6.3))} ${formatNumber(mmToPt(148) - mmToPt(23.3))} cm`,
+    );
+  });
+
+  it("ไม่มีข้อความป้ายก็ไม่มี XObject เพิ่ม", () => {
+    expect(pdfFor({ texts: [] })).not.toContain("/Text0");
   });
 });
