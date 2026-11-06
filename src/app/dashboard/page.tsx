@@ -72,6 +72,14 @@ export default async function DashboardPage() {
             <Button asChild variant="outline" size="sm">
               <Link href="/dashboard/stats">สถิติการสแกน</Link>
             </Button>
+            {items.length > 0 && (
+              <Button asChild variant="outline" size="sm">
+                {/* ใช้ <a> ธรรมดา ไม่ใช่ Link เพราะเป็นการดาวน์โหลดไฟล์ ไม่ใช่เปลี่ยนหน้า */}
+                <a href="/dashboard/export" download>
+                  ส่งออก CSV
+                </a>
+              </Button>
+            )}
             <Button asChild size="sm">
               <Link href="/">สร้าง QR ใหม่</Link>
             </Button>
