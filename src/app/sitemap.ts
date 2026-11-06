@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { LEGAL_DOCUMENTS } from "@/lib/legal";
+import { COMPARISONS } from "@/lib/seo/comparisons";
 import { TYPE_PAGE_LIST } from "@/lib/seo/type-pages";
 import { USE_CASES } from "@/lib/seo/use-cases";
 import { absoluteUrl } from "@/lib/site";
@@ -48,6 +49,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: now,
       changeFrequency: "monthly" as const,
       priority: 0.7,
+    })),
+    ...COMPARISONS.map((item) => ({
+      url: absoluteUrl(`/vs/${item.slug}`),
+      lastModified: new Date(item.checkedAt),
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
     })),
     // หน้ากฎหมายไม่ได้ทำมาเพื่อติดอันดับ แต่ต้องถูก index เพราะผู้พิจารณา
     // ใบสมัคร payment gateway และผู้ใช้ต้องค้นเจอได้

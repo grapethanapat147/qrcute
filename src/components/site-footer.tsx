@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LEGAL_DOCUMENTS } from "@/lib/legal";
+import { COMPARISONS } from "@/lib/seo/comparisons";
 import { TYPE_PAGE_LIST } from "@/lib/seo/type-pages";
 import { USE_CASES } from "@/lib/seo/use-cases";
 import { siteConfig } from "@/lib/site";
@@ -63,6 +64,16 @@ export function SiteFooter() {
                 ราคา
               </Link>
             </li>
+            {COMPARISONS.map((item) => (
+              <li key={item.slug}>
+                <Link
+                  href={`/vs/${item.slug}`}
+                  className="hover:text-foreground"
+                >
+                  เทียบกับ {item.name}
+                </Link>
+              </li>
+            ))}
             {LEGAL_DOCUMENTS.map((doc) => (
               <li key={doc.slug}>
                 <Link href={`/${doc.slug}`} className="hover:text-foreground">
